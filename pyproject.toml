@@ -1,0 +1,17 @@
+[project]
+name = "reduct"
+version = "0.1.0"
+description = "A tool for reducing information"
+readme = "README.md"
+authors = [
+    { name = "Dan Davison", email = "dandavison7@gmail.com" }
+]
+requires-python = ">=3.13"
+dependencies = []
+
+[project.scripts]
+reduct = "reduct:main"
+
+[build-system]
+requires = ["uv_build>=0.7.19,<0.8.0"]
+build-backend = "uv_build"
