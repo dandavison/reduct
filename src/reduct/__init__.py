@@ -4,8 +4,9 @@ import time
 import urllib.parse
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
+import litellm
 import requests
 import typer
 import whisper
@@ -15,6 +16,63 @@ from bs4 import BeautifulSoup
 from slugify import slugify
 
 app = typer.Typer()
+
+
+def setup_llm_api_keys():
+    """Set up API keys from environment variables."""
+    # Set API keys for different providers
+    if "ANTHROPIC_API_KEY" in os.environ:
+        os.environ["ANTHROPIC_API_KEY"] = os.environ["ANTHROPIC_API_KEY"]
+    if "OPENAI_API_KEY" in os.environ:
+        os.environ["OPENAI_API_KEY"] = os.environ["OPENAI_API_KEY"]
+
+    # Check if we have at least one API key
+    if "ANTHROPIC_API_KEY" not in os.environ and "OPENAI_API_KEY" not in os.environ:
+        print("Warning: No API keys found in environment variables")
+        print("Please set ANTHROPIC_API_KEY or OPENAI_API_KEY")
+
+
+def summarize_content(content: str, model: str = "claude-3-haiku-20240307") -> str:
+    """Summarize content using LLM."""
+    setup_llm_api_keys()
+
+    prompt = f"""Please provide a concise summary of the following content. Focus on:
+1. Main topics and key points
+2. Important insights or conclusions
+3. Any novel ideas or approaches mentioned
+4. Practical applications or implications
+
+Keep the summary to approximately 200-300 words while capturing the essential information.
+
+Content to summarize:
+{content}"""
+
+    try:
+        response = litellm.completion(
+            model=model,
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=500,
+            temperature=0.3,
+        )
+
+        if hasattr(response, "choices") and len(response.choices) > 0:
+            message = response.choices[0].message
+            if hasattr(message, "content") and message.content:
+                return str(message.content)
+            else:
+                return "Error: No content in response"
+        else:
+            return "Error: No choices in response"
+    except Exception as e:
+        return f"Error generating summary: {str(e)}"
+
+
+def get_sources_list() -> list[Path]:
+    """Get list of all source directories."""
+    sources_dir = Path("sources")
+    if not sources_dir.exists():
+        return []
+    return [d for d in sources_dir.iterdir() if d.is_dir()]
 
 
 def is_url(input_str: str) -> bool:
@@ -449,6 +507,132 @@ def transcribe(
     except Exception as e:
         print(f"Error: {e}")
         raise typer.Exit(1)
+
+
+@app.command()
+def summarize(
+    source: str = typer.Argument(..., help="Source directory name to summarize"),
+    model: str = typer.Option(
+        "claude-3-haiku-20240307", "--model", "-m", help="LLM model to use"
+    ),
+    output_file: str = typer.Option(
+        None, "--output-file", "-o", help="Output file path (use '-' for stdout)"
+    ),
+    verbose: bool = typer.Option(
+        False, "--verbose", "-v", help="Enable verbose output"
+    ),
+):
+    """Summarize content from a specific source."""
+
+    sources_dir = Path("sources")
+    source_dir = sources_dir / source
+
+    if not source_dir.exists():
+        print(f"Source directory not found: {source_dir}")
+        raise typer.Exit(1)
+
+    content_file = source_dir / "content.md"
+    if not content_file.exists():
+        print(f"Content file not found: {content_file}")
+        raise typer.Exit(1)
+
+    if verbose:
+        print(f"Reading content from: {content_file}")
+
+    with open(content_file, "r") as f:
+        content = f.read()
+
+    if verbose:
+        print(f"Content length: {len(content)} characters")
+        print(f"Using model: {model}")
+
+    summary = summarize_content(content, model)
+
+    if output_file == "-":
+        print(summary)
+    else:
+        if output_file is None:
+            output_path = source_dir / "summary.md"
+        else:
+            output_path = Path(output_file)
+
+        with open(output_path, "w") as f:
+            f.write(summary)
+
+        print(f"Summary saved to: {output_path}")
+
+
+@app.command()
+def summarize_all(
+    model: str = typer.Option(
+        "claude-3-haiku-20240307", "--model", "-m", help="LLM model to use"
+    ),
+    verbose: bool = typer.Option(
+        False, "--verbose", "-v", help="Enable verbose output"
+    ),
+    delay: float = typer.Option(
+        1.0, "--delay", help="Delay between API calls in seconds"
+    ),
+):
+    """Summarize content from all sources."""
+
+    sources = get_sources_list()
+    if not sources:
+        print("No sources found in sources/ directory")
+        return
+
+    print(f"Found {len(sources)} sources to summarize")
+
+    successful = 0
+    failed = 0
+
+    for i, source_dir in enumerate(sources, 1):
+        print(f"\n[{i}/{len(sources)}] Processing: {source_dir.name}")
+
+        content_file = source_dir / "content.md"
+        if not content_file.exists():
+            print(f"⚠️  Content file not found: {content_file}")
+            failed += 1
+            continue
+
+        summary_file = source_dir / "summary.md"
+        if summary_file.exists():
+            if verbose:
+                print("Summary already exists, skipping...")
+            continue
+
+        try:
+            if verbose:
+                print(f"Reading content from: {content_file}")
+
+            with open(content_file, "r") as f:
+                content = f.read()
+
+            if verbose:
+                print(f"Content length: {len(content)} characters")
+                print(f"Using model: {model}")
+
+            summary = summarize_content(content, model)
+
+            with open(summary_file, "w") as f:
+                f.write(summary)
+
+            print(f"✅ Summary saved to: {summary_file}")
+            successful += 1
+
+        except Exception as e:
+            print(f"❌ Error processing {source_dir.name}: {e}")
+            failed += 1
+
+        # Add delay between API calls
+        if i < len(sources) and delay > 0:
+            if verbose:
+                print(f"Waiting {delay} seconds...")
+            time.sleep(delay)
+
+    print(
+        f"\n📊 Summary: {successful} successful, {failed} failed out of {len(sources)} total"
+    )
 
 
 def main() -> None:
