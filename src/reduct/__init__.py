@@ -635,5 +635,102 @@ def summarize_all(
     )
 
 
+@app.command()
+def status(
+    verbose: bool = typer.Option(
+        False, "--verbose", "-v", help="Show detailed information for each source"
+    ),
+):
+    """Show the current state of the sources compendium."""
+
+    sources = get_sources_list()
+    if not sources:
+        print("📂 No sources found in the compendium.")
+        return
+
+    # Collect statistics
+    total_sources = len(sources)
+    sources_with_content = 0
+    sources_with_summaries = 0
+    source_details = []
+
+    for source_dir in sources:
+        data_file = source_dir / "data.yaml"
+        content_file = source_dir / "content.md"
+        summary_file = source_dir / "summary.md"
+
+        has_content = content_file.exists()
+        has_summary = summary_file.exists()
+
+        if has_content:
+            sources_with_content += 1
+        if has_summary:
+            sources_with_summaries += 1
+
+        # Load metadata
+        metadata = {}
+        if data_file.exists():
+            try:
+                with open(data_file, "r") as f:
+                    metadata = yaml.safe_load(f)
+            except Exception:
+                pass
+
+        source_details.append(
+            {
+                "name": source_dir.name,
+                "metadata": metadata,
+                "has_content": has_content,
+                "has_summary": has_summary,
+                "content_size": content_file.stat().st_size if has_content else 0,
+            }
+        )
+
+    # Sort by date_added (most recent first)
+    source_details.sort(key=lambda x: x["metadata"].get("date_added", ""), reverse=True)
+
+    # Print summary statistics
+    print("📊 Compendium Status")
+    print(f"   Total sources: {total_sources}")
+    print(f"   Sources with content: {sources_with_content}")
+    print(f"   Sources with summaries: {sources_with_summaries}")
+    print(
+        f"   Completion rate: {sources_with_summaries}/{sources_with_content} ({100 * sources_with_summaries / max(sources_with_content, 1):.0f}%)"
+    )
+    print()
+
+    if verbose:
+        # Show detailed source information
+        print("📋 Source Details:")
+        for detail in source_details:
+            metadata = detail["metadata"]
+            title = metadata.get("title", detail["name"])
+            url = metadata.get("url", "No URL")
+            date_added = metadata.get("date_added", "Unknown")
+
+            # Status indicators
+            content_status = "✅" if detail["has_content"] else "❌"
+            summary_status = "✅" if detail["has_summary"] else "❌"
+
+            print(f"  {title}")
+            print(f"    📁 {detail['name']}")
+            print(f"    🔗 {url}")
+            print(f"    📅 Added: {date_added}")
+            print(f"    📄 Content: {content_status} Summary: {summary_status}")
+            if detail["has_content"]:
+                size_kb = detail["content_size"] / 1024
+                print(f"    📏 Content size: {size_kb:.1f}KB")
+            print()
+    else:
+        # Show condensed list
+        print("📋 Sources (most recent first):")
+        for detail in source_details:
+            metadata = detail["metadata"]
+            title = metadata.get("title", detail["name"])
+            content_status = "📄" if detail["has_content"] else "❌"
+            summary_status = "📝" if detail["has_summary"] else "❌"
+            print(f"  {content_status}{summary_status} {title}")
+
+
 def main() -> None:
     app()
