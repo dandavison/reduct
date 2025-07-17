@@ -292,10 +292,12 @@ def get_web_info(url: str) -> Dict[str, Any]:
         }
 
 
-def create_source_directory(source_info: Dict[str, Any]) -> str:
+def create_source_directory(
+    source_info: Dict[str, Any], parent_dir: str = "sources"
+) -> str:
     """Create source directory and save metadata."""
     slug = create_source_slug(source_info["title"])
-    source_dir = Path("sources") / slug
+    source_dir = Path(parent_dir) / slug
     source_dir.mkdir(parents=True, exist_ok=True)
 
     # Save metadata
@@ -334,11 +336,14 @@ def extract_web_content(url: str) -> str:
 
 
 def _add_single_source(
-    url: str, verbose: bool = False, skip_content: bool = False
+    url: str,
+    verbose: bool = False,
+    skip_content: bool = False,
+    parent_dir: str = "sources",
 ) -> bool:
     """Add a single source. Returns True if successful."""
-    # Ensure sources directory exists
-    os.makedirs("sources", exist_ok=True)
+    # Ensure parent directory exists
+    os.makedirs(parent_dir, exist_ok=True)
 
     try:
         if verbose:
@@ -356,7 +361,7 @@ def _add_single_source(
             print(f"Source type: {source_info['type']}")
 
         # Create source directory
-        source_dir = create_source_directory(source_info)
+        source_dir = create_source_directory(source_info, parent_dir)
 
         if verbose:
             print(f"Created source directory: {source_dir}")
@@ -730,6 +735,149 @@ def status(
             content_status = "📄" if detail["has_content"] else "❌"
             summary_status = "📝" if detail["has_summary"] else "❌"
             print(f"  {content_status}{summary_status} {title}")
+
+
+@app.command()
+def crawl_site(
+    url: str = typer.Argument(..., help="Starting URL to crawl"),
+    max_depth: int = typer.Option(3, "--max-depth", "-d", help="Maximum crawl depth"),
+    max_pages: int = typer.Option(
+        50, "--max-pages", "-p", help="Maximum number of pages to crawl"
+    ),
+    delay: float = typer.Option(
+        2.0, "--delay", help="Delay between requests in seconds"
+    ),
+    verbose: bool = typer.Option(
+        False, "--verbose", "-v", help="Enable verbose output"
+    ),
+    skip_content: bool = typer.Option(
+        False, "--skip-content", help="Only save metadata, skip content extraction"
+    ),
+):
+    """Crawl a website staying within the same domain."""
+
+    import re
+    from urllib.parse import urljoin, urlparse
+
+    # Parse the starting URL to get the domain
+    parsed_start = urlparse(url)
+    base_domain = parsed_start.netloc
+
+    # Create site-specific directory
+    site_slug = slugify(base_domain)
+    site_dir = Path("sources") / site_slug
+    site_dir.mkdir(parents=True, exist_ok=True)
+
+    print(f"🕷️  Starting crawl of {base_domain}")
+    print(f"   Target directory: {site_dir}")
+    print(f"   Max depth: {max_depth}")
+    print(f"   Max pages: {max_pages}")
+    print(f"   Delay: {delay}s between requests")
+
+    # Track visited URLs and queue
+    visited = set()
+    queue = [(url, 0)]  # (url, depth)
+    crawled_count = 0
+
+    while queue and crawled_count < max_pages:
+        current_url, depth = queue.pop(0)
+
+        # Skip if already visited or depth exceeded
+        if current_url in visited or depth > max_depth:
+            continue
+
+        visited.add(current_url)
+        crawled_count += 1
+
+        print(f"\n[{crawled_count}/{max_pages}] Depth {depth}: {current_url}")
+
+        try:
+            # Add the current page as a source
+            if verbose:
+                print("  Adding source...")
+
+            success = _add_single_source(
+                current_url,
+                verbose=False,
+                skip_content=skip_content,
+                parent_dir=str(site_dir),
+            )
+            if not success:
+                print("  ⚠️  Failed to add source")
+                continue
+
+            # Only extract links if we haven't reached max depth
+            if depth < max_depth:
+                if verbose:
+                    print("  Extracting links...")
+
+                # Get the page content to extract links
+                headers = {
+                    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
+                }
+                response = requests.get(current_url, timeout=15, headers=headers)
+                response.raise_for_status()
+                soup = BeautifulSoup(response.content, "html.parser")
+
+                # Find all links
+                links = soup.find_all("a", href=True)
+                new_links = []
+
+                for link in links:
+                    try:
+                        # Access href attribute directly from BeautifulSoup tag
+                        href = getattr(link, "attrs", {}).get("href")
+                        if not href or not isinstance(href, str):
+                            continue
+                    except (AttributeError, KeyError):
+                        continue
+                    # Convert relative URLs to absolute
+                    absolute_url = urljoin(current_url, href)
+                    parsed_link = urlparse(absolute_url)
+
+                    # Only follow links within the same domain
+                    if (
+                        parsed_link.netloc == base_domain
+                        and absolute_url not in visited
+                        and absolute_url not in [q[0] for q in queue]
+                    ):
+                        # Skip common non-content links
+                        if not any(
+                            skip_pattern in absolute_url.lower()
+                            for skip_pattern in [
+                                "#",
+                                "javascript:",
+                                "mailto:",
+                                "tel:",
+                                ".pdf",
+                                ".zip",
+                                ".png",
+                                ".jpg",
+                                ".gif",
+                            ]
+                        ):
+                            new_links.append(absolute_url)
+
+                # Add new links to queue
+                for new_url in new_links:
+                    queue.append((new_url, depth + 1))
+
+                if verbose:
+                    print(f"  Found {len(new_links)} new links to crawl")
+
+        except Exception as e:
+            print(f"  ❌ Error crawling {current_url}: {e}")
+
+        # Add delay between requests
+        if queue and delay > 0:
+            if verbose:
+                print(f"  Waiting {delay} seconds...")
+            time.sleep(delay)
+
+    print("\n✅ Crawl completed!")
+    print(f"   Pages crawled: {crawled_count}")
+    print(f"   Pages discovered but not crawled: {len(queue)}")
+    print("   Use 'reduct status' to see the added sources")
 
 
 def main() -> None:
