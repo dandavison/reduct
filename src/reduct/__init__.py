@@ -29,20 +29,33 @@ def summarize_content(content: str) -> str:
         print("Error: Set LLM_MODEL environment variable")
         raise typer.Exit(1)
 
-    if "LLM_KEY" not in os.environ:
-        print("Error: Set LLM_KEY environment variable")
-        raise typer.Exit(1)
-
     model = os.environ["LLM_MODEL"]
+
+    # Get API key - check LLM_KEY first, then fall back to provider-specific keys
+    api_key = None
+    if "LLM_KEY" in os.environ:
+        api_key = os.environ["LLM_KEY"]
+    elif model.startswith("anthropic/") and "ANTHROPIC_API_KEY" in os.environ:
+        api_key = os.environ["ANTHROPIC_API_KEY"]
+    elif (
+        model.startswith("openai/") or model.startswith("gpt-")
+    ) and "OPENAI_API_KEY" in os.environ:
+        api_key = os.environ["OPENAI_API_KEY"]
+
+    if not api_key:
+        print(
+            "Error: Set LLM_KEY or provider-specific API key (ANTHROPIC_API_KEY, OPENAI_API_KEY)"
+        )
+        raise typer.Exit(1)
 
     # Set the appropriate API key for litellm
     if model.startswith("anthropic/"):
-        os.environ["ANTHROPIC_API_KEY"] = os.environ["LLM_KEY"]
+        os.environ["ANTHROPIC_API_KEY"] = api_key
     elif model.startswith("openai/") or model.startswith("gpt-"):
-        os.environ["OPENAI_API_KEY"] = os.environ["LLM_KEY"]
+        os.environ["OPENAI_API_KEY"] = api_key
     else:
         # For other providers, use the generic API_KEY
-        os.environ["API_KEY"] = os.environ["LLM_KEY"]
+        os.environ["API_KEY"] = api_key
 
     prompt = f"""Provide a concise summary of the following content. Focus on:
 1. Main topics and key points
