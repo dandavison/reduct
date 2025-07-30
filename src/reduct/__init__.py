@@ -23,18 +23,28 @@ def get_output_directory() -> str:
     return os.environ.get("REDUCT_OUTPUT_DIRECTORY", "compendia")
 
 
-def setup_llm_api_keys():
-    """Set up API keys from environment variables."""
-    if "ANTHROPIC_API_KEY" not in os.environ and "OPENAI_API_KEY" not in os.environ:
-        print("Error: No API keys found. Set ANTHROPIC_API_KEY or OPENAI_API_KEY")
+def summarize_content(content: str) -> str:
+    """Summarize content using LLM."""
+    if "LLM_MODEL" not in os.environ:
+        print("Error: Set LLM_MODEL environment variable")
         raise typer.Exit(1)
 
+    if "LLM_KEY" not in os.environ:
+        print("Error: Set LLM_KEY environment variable")
+        raise typer.Exit(1)
 
-def summarize_content(content: str, model: str = "claude-3-haiku-20240307") -> str:
-    """Summarize content using LLM."""
-    setup_llm_api_keys()
+    model = os.environ["LLM_MODEL"]
 
-    prompt = f"""Please provide a concise summary of the following content. Focus on:
+    # Set the appropriate API key for litellm
+    if model.startswith("anthropic/"):
+        os.environ["ANTHROPIC_API_KEY"] = os.environ["LLM_KEY"]
+    elif model.startswith("openai/") or model.startswith("gpt-"):
+        os.environ["OPENAI_API_KEY"] = os.environ["LLM_KEY"]
+    else:
+        # For other providers, use the generic API_KEY
+        os.environ["API_KEY"] = os.environ["LLM_KEY"]
+
+    prompt = f"""Provide a concise summary of the following content. Focus on:
 1. Main topics and key points
 2. Important insights or conclusions
 3. Any novel ideas or approaches mentioned
@@ -509,9 +519,6 @@ def transcribe(
 @app.command()
 def summarize(
     source: str = typer.Argument(..., help="Source directory path to summarize"),
-    model: str = typer.Option(
-        "claude-3-haiku-20240307", "--model", "-m", help="LLM model to use"
-    ),
     output_file: str = typer.Option(
         None, "--output-file", "-o", help="Output file path (use '-' for stdout)"
     ),
@@ -540,9 +547,9 @@ def summarize(
 
     if verbose:
         print(f"Content length: {len(content)} characters")
-        print(f"Using model: {model}")
+        print(f"Using model: {os.environ.get('LLM_MODEL', 'not set')}")
 
-    summary = summarize_content(content, model)
+    summary = summarize_content(content)
 
     if output_file == "-":
         print(summary)
@@ -560,9 +567,6 @@ def summarize(
 
 @app.command()
 def summarize_all(
-    model: str = typer.Option(
-        "claude-3-haiku-20240307", "--model", "-m", help="LLM model to use"
-    ),
     verbose: bool = typer.Option(
         False, "--verbose", "-v", help="Enable verbose output"
     ),
@@ -606,9 +610,9 @@ def summarize_all(
 
             if verbose:
                 print(f"Content length: {len(content)} characters")
-                print(f"Using model: {model}")
+                print(f"Using model: {os.environ.get('LLM_MODEL', 'not set')}")
 
-            summary = summarize_content(content, model)
+            summary = summarize_content(content)
 
             with open(summary_file, "w") as f:
                 f.write(summary)
