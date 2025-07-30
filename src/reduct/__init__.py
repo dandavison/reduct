@@ -18,6 +18,11 @@ from slugify import slugify
 app = typer.Typer()
 
 
+def get_output_directory() -> str:
+    """Get the output directory from environment variable or default to 'sources'."""
+    return os.environ.get("REDUCT_OUTPUT_DIRECTORY", "compendia")
+
+
 def setup_llm_api_keys():
     """Set up API keys from environment variables."""
     # Set API keys for different providers
@@ -69,7 +74,7 @@ Content to summarize:
 
 def get_sources_list() -> list[Path]:
     """Get list of all source directories."""
-    sources_dir = Path("sources")
+    sources_dir = Path(get_output_directory())
     if not sources_dir.exists():
         return []
     return [d for d in sources_dir.iterdir() if d.is_dir()]
@@ -293,9 +298,11 @@ def get_web_info(url: str) -> Dict[str, Any]:
 
 
 def create_source_directory(
-    source_info: Dict[str, Any], parent_dir: str = "sources"
+    source_info: Dict[str, Any], parent_dir: str | None = None
 ) -> str:
     """Create source directory and save metadata."""
+    if parent_dir is None:
+        parent_dir = get_output_directory()
     slug = create_source_slug(source_info["title"])
     source_dir = Path(parent_dir) / slug
     source_dir.mkdir(parents=True, exist_ok=True)
@@ -339,9 +346,11 @@ def _add_single_source(
     url: str,
     verbose: bool = False,
     skip_content: bool = False,
-    parent_dir: str = "sources",
+    parent_dir: str | None = None,
 ) -> bool:
     """Add a single source. Returns True if successful."""
+    if parent_dir is None:
+        parent_dir = get_output_directory()
     # Ensure parent directory exists
     os.makedirs(parent_dir, exist_ok=True)
 
@@ -529,7 +538,7 @@ def summarize(
 ):
     """Summarize content from a specific source."""
 
-    sources_dir = Path("sources")
+    sources_dir = Path(get_output_directory())
     source_dir = sources_dir / source
 
     if not source_dir.exists():
@@ -583,7 +592,7 @@ def summarize_all(
 
     sources = get_sources_list()
     if not sources:
-        print("No sources found in sources/ directory")
+        print(f"No sources found in {get_output_directory()}/ directory")
         return
 
     print(f"Found {len(sources)} sources to summarize")
@@ -765,7 +774,7 @@ def crawl_site(
 
     # Create site-specific directory
     site_slug = slugify(base_domain)
-    site_dir = Path("sources") / site_slug
+    site_dir = Path(get_output_directory()) / site_slug
     site_dir.mkdir(parents=True, exist_ok=True)
 
     print(f"🕷️  Starting crawl of {base_domain}")
