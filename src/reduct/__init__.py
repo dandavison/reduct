@@ -25,16 +25,9 @@ def get_output_directory() -> str:
 
 def setup_llm_api_keys():
     """Set up API keys from environment variables."""
-    # Set API keys for different providers
-    if "ANTHROPIC_API_KEY" in os.environ:
-        os.environ["ANTHROPIC_API_KEY"] = os.environ["ANTHROPIC_API_KEY"]
-    if "OPENAI_API_KEY" in os.environ:
-        os.environ["OPENAI_API_KEY"] = os.environ["OPENAI_API_KEY"]
-
-    # Check if we have at least one API key
     if "ANTHROPIC_API_KEY" not in os.environ and "OPENAI_API_KEY" not in os.environ:
-        print("Warning: No API keys found in environment variables")
-        print("Please set ANTHROPIC_API_KEY or OPENAI_API_KEY")
+        print("Error: No API keys found. Set ANTHROPIC_API_KEY or OPENAI_API_KEY")
+        raise typer.Exit(1)
 
 
 def summarize_content(content: str, model: str = "claude-3-haiku-20240307") -> str:
@@ -52,24 +45,14 @@ Keep the summary to approximately 200-300 words while capturing the essential in
 Content to summarize:
 {content}"""
 
-    try:
-        response = litellm.completion(
-            model=model,
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=500,
-            temperature=0.3,
-        )
+    response = litellm.completion(
+        model=model,
+        messages=[{"role": "user", "content": prompt}],
+        max_tokens=500,
+        temperature=0.3,
+    )
 
-        if hasattr(response, "choices") and len(response.choices) > 0:
-            message = response.choices[0].message
-            if hasattr(message, "content") and message.content:
-                return str(message.content)
-            else:
-                return "Error: No content in response"
-        else:
-            return "Error: No choices in response"
-    except Exception as e:
-        return f"Error generating summary: {str(e)}"
+    return str(response.choices[0].message.content)
 
 
 def get_sources_list() -> list[Path]:
