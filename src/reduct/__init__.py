@@ -525,7 +525,7 @@ def transcribe(
 
 @app.command()
 def summarize(
-    source: str = typer.Argument(..., help="Source directory name to summarize"),
+    source: str = typer.Argument(..., help="Source directory path to summarize"),
     model: str = typer.Option(
         "claude-3-haiku-20240307", "--model", "-m", help="LLM model to use"
     ),
@@ -538,8 +538,7 @@ def summarize(
 ):
     """Summarize content from a specific source."""
 
-    sources_dir = Path(get_output_directory())
-    source_dir = sources_dir / source
+    source_dir = Path(source)
 
     if not source_dir.exists():
         print(f"Source directory not found: {source_dir}")
