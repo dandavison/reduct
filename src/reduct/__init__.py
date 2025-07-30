@@ -746,6 +746,77 @@ def status(
 
 
 @app.command()
+def models(
+    provider: str = typer.Option(
+        None,
+        "--provider",
+        "-p",
+        help="Filter by provider (anthropic, openai, google, etc.)",
+    ),
+):
+    """List available LLM models."""
+    try:
+        import litellm
+
+        # Get model cost map which contains model info
+        model_cost_map = litellm.model_cost
+
+        if not model_cost_map:
+            print("No model information available")
+            return
+
+        # Group models by provider
+        providers = {}
+        for model_name in model_cost_map.keys():
+            if "/" in model_name:
+                provider_name = model_name.split("/")[0]
+            else:
+                # For models without explicit provider prefix
+                if model_name.startswith("gpt-") or model_name.startswith("o1-"):
+                    provider_name = "openai"
+                elif model_name.startswith("claude-"):
+                    provider_name = "anthropic"
+                elif model_name.startswith("gemini-"):
+                    provider_name = "google"
+                else:
+                    provider_name = "other"
+
+            if provider_name not in providers:
+                providers[provider_name] = []
+            providers[provider_name].append(model_name)
+
+        # Filter by provider if specified
+        if provider:
+            providers = {
+                k: v for k, v in providers.items() if k.lower() == provider.lower()
+            }
+            if not providers:
+                print(f"No models found for provider: {provider}")
+                return
+
+        # Display models grouped by provider
+        for provider_name in sorted(providers.keys()):
+            print(f"\n{provider_name.upper()} MODELS:")
+            for model in sorted(providers[provider_name]):
+                print(f"  {model}")
+
+        print(
+            f"\nTotal: {sum(len(models) for models in providers.values())} models across {len(providers)} providers"
+        )
+        print("\nUsage: Set LLM_MODEL=<model_name> and LLM_KEY=<api_key>")
+        print(
+            "Note: Model names with '/' are prefixed (e.g., 'anthropic/claude-3-sonnet'), others use default provider routing"
+        )
+
+    except ImportError:
+        print("Error: litellm not available")
+        raise typer.Exit(1)
+    except Exception as e:
+        print(f"Error listing models: {e}")
+        raise typer.Exit(1)
+
+
+@app.command()
 def crawl_site(
     url: str = typer.Argument(..., help="Starting URL to crawl"),
     max_depth: int = typer.Option(3, "--max-depth", "-d", help="Maximum crawl depth"),
