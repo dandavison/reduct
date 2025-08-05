@@ -289,7 +289,9 @@ ls compendia/agents/transform.md
 
 ### Rich Progress Indicators
 - **Progress bars** for batch operations (add-sources-batch, summarize-all, crawl-site)
-- **Spinners** for transcription operations (always shown for download, model loading, and transcribing)
+- **Spinner** for downloading audio from YouTube URLs
+- **Status messages** for model loading and transcription start
+- **Whisper's native progress** for transcription (shows percentage and time remaining)
 - **Color-coded status indicators** for success/failure/warnings
 - **Non-intrusive**: Progress output goes to stderr, preserving stdout for piping
 

@@ -205,20 +205,18 @@ def transcribe_from_url(url: str, verbose: bool = False) -> str:
             console=console,
             transient=True,
         ) as progress:
-            task = progress.add_task("[cyan]⬇ Downloading audio...", total=None)
+            progress.add_task("[cyan]⬇ Downloading audio...", total=None)
 
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 ydl.download([url])
 
             audio_file = os.path.join(temp_dir, "audio.mp3")
 
-            progress.update(task, description="[cyan]🔧 Loading Whisper model...")
-            model = whisper.load_model("base")
+        console.print("[cyan]🔧 Loading Whisper model...[/cyan]")
+        model = whisper.load_model("base")
 
-            progress.update(task, description="[cyan]🎤 Transcribing audio...")
-            result = model.transcribe(
-                audio_file, verbose=False
-            )  # Disable whisper's own progress bar
+        console.print("[cyan]🎤 Transcribing audio...[/cyan]")
+        result = model.transcribe(audio_file, verbose=False)
 
         return str(result["text"])
 
@@ -228,22 +226,11 @@ def transcribe_from_file(filepath: str, verbose: bool = False) -> str:
     if not os.path.exists(filepath):
         raise typer.BadParameter(f"File not found: {filepath}")
 
-    with Progress(
-        SpinnerColumn(),
-        TextColumn("[progress.description]{task.description}"),
-        console=console,
-        transient=True,
-    ) as progress:
-        task = progress.add_task("[cyan]🔧 Loading Whisper model...", total=None)
-        model = whisper.load_model("base")
+    console.print("[cyan]🔧 Loading Whisper model...[/cyan]")
+    model = whisper.load_model("base")
 
-        progress.update(
-            task,
-            description=f"[cyan]🎤 Transcribing file: {os.path.basename(filepath)}",
-        )
-        result = model.transcribe(
-            filepath, verbose=False
-        )  # Disable whisper's own progress bar
+    console.print(f"[cyan]🎤 Transcribing file: {os.path.basename(filepath)}[/cyan]")
+    result = model.transcribe(filepath)
 
     return str(result["text"])
 
