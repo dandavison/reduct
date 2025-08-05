@@ -22,7 +22,7 @@ uv run reduct summarize article
 uv run reduct transform article "Extract key points as bullet list"
 
 # 6. Or pipe commands together
-uv run reduct transcribe -t "https://youtube.com/watch?v=..." | \
+uv run reduct transcribe "https://youtube.com/watch?v=..." | \
   uv run reduct transform "Create a clean summary"
 ```
 
@@ -118,16 +118,16 @@ uv run reduct add-sources-batch ai_reading_list.txt --delay 2.0
 
 ```bash
 # Transcribe from YouTube URL (outputs to stdout by default)
-uv run reduct transcribe -t "https://youtube.com/watch?v=..."
+uv run reduct transcribe "https://youtube.com/watch?v=..."
 
 # Transcribe from local audio file
-uv run reduct transcribe -t "audio.mp3"
+uv run reduct transcribe "audio.mp3"
 
 # Save to file instead of stdout
-uv run reduct transcribe -t "https://youtube.com/watch?v=..." -o transcript.txt
+uv run reduct transcribe "https://youtube.com/watch?v=..." -o transcript.txt
 
 # Pipe directly to transformation
-uv run reduct transcribe -t "https://youtube.com/watch?v=..." | \
+uv run reduct transcribe "https://youtube.com/watch?v=..." | \
   uv run reduct transform "Clean up the transcript and format as paragraphs"
 ```
 
@@ -169,7 +169,7 @@ echo "Raw text content" | uv run reduct transform "Format as bullet points"
 uv run reduct transform "Extract key points" --source agents
 
 # Chain multiple operations
-uv run reduct transcribe -t "https://youtube.com/watch?v=..." | \
+uv run reduct transcribe "https://youtube.com/watch?v=..." | \
   uv run reduct transform "Clean up transcript" | \
   uv run reduct transform "Summarize in 3 bullet points"
 

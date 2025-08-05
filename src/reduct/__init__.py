@@ -535,8 +535,8 @@ def add_sources_batch(
 
 @app.command()
 def transcribe(
-    source: str = typer.Option(
-        ..., "--transcribe", "-t", help="YouTube URL or local file path to transcribe"
+    source: str = typer.Argument(
+        ..., help="YouTube URL or local file path to transcribe"
     ),
     output_file: str = typer.Option(
         "-",
