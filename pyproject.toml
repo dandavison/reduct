@@ -17,6 +17,7 @@ dependencies = [
     "python-slugify>=8.0.0",
     "python-dateutil>=2.8.0",
     "litellm>=1.52.0",
+    "rich>=13.0.0",
 ]
 
 [project.scripts]

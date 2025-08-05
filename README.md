@@ -287,6 +287,12 @@ ls compendia/agents/transform.md
 
 ## Features
 
+### Rich Progress Indicators
+- **Progress bars** for batch operations (add-sources-batch, summarize-all, crawl-site)
+- **Spinners** for transcription operations (always shown for download, model loading, and transcribing)
+- **Color-coded status indicators** for success/failure/warnings
+- **Non-intrusive**: Progress output goes to stderr, preserving stdout for piping
+
 ### Content Extraction
 - **YouTube Videos**: Uses `yt-dlp` + `whisper` for audio transcription
 - **Web Articles**: Uses `BeautifulSoup` for HTML content extraction

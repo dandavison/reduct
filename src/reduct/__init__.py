@@ -14,9 +14,18 @@ import whisper
 import yaml
 import yt_dlp
 from bs4 import BeautifulSoup
+from rich.console import Console
+from rich.progress import (
+    BarColumn,
+    Progress,
+    SpinnerColumn,
+    TaskProgressColumn,
+    TextColumn,
+)
 from slugify import slugify
 
 app = typer.Typer()
+console = Console(stderr=True)  # Use stderr to avoid interfering with piped output
 
 
 def get_output_directory() -> str:
@@ -186,24 +195,30 @@ def transcribe_from_url(url: str, verbose: bool = False) -> str:
                     "preferredquality": "192",
                 }
             ],
-            "quiet": not verbose,
+            "quiet": True,  # Always quiet to not interfere with our spinner
+            "no_warnings": True,
         }
 
-        if verbose:
-            print(f"Downloading audio from: {url}", file=sys.stderr)
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console,
+            transient=True,
+        ) as progress:
+            task = progress.add_task("[cyan]⬇ Downloading audio...", total=None)
 
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            ydl.download([url])
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                ydl.download([url])
 
-        audio_file = os.path.join(temp_dir, "audio.mp3")
+            audio_file = os.path.join(temp_dir, "audio.mp3")
 
-        if verbose:
-            print("Loading Whisper model...", file=sys.stderr)
-        model = whisper.load_model("base")
+            progress.update(task, description="[cyan]🔧 Loading Whisper model...")
+            model = whisper.load_model("base")
 
-        if verbose:
-            print("Transcribing audio...", file=sys.stderr)
-        result = model.transcribe(audio_file, verbose=verbose)
+            progress.update(task, description="[cyan]🎤 Transcribing audio...")
+            result = model.transcribe(
+                audio_file, verbose=False
+            )  # Disable whisper's own progress bar
 
         return str(result["text"])
 
@@ -213,13 +228,22 @@ def transcribe_from_file(filepath: str, verbose: bool = False) -> str:
     if not os.path.exists(filepath):
         raise typer.BadParameter(f"File not found: {filepath}")
 
-    if verbose:
-        print("Loading Whisper model...", file=sys.stderr)
-    model = whisper.load_model("base")
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        console=console,
+        transient=True,
+    ) as progress:
+        task = progress.add_task("[cyan]🔧 Loading Whisper model...", total=None)
+        model = whisper.load_model("base")
 
-    if verbose:
-        print(f"Transcribing file: {filepath}", file=sys.stderr)
-    result = model.transcribe(filepath, verbose=verbose)
+        progress.update(
+            task,
+            description=f"[cyan]🎤 Transcribing file: {os.path.basename(filepath)}",
+        )
+        result = model.transcribe(
+            filepath, verbose=False
+        )  # Disable whisper's own progress bar
 
     return str(result["text"])
 
@@ -511,25 +535,42 @@ def add_sources_batch(
     successful = 0
     failed = 0
 
-    for i, url in enumerate(url_list, 1):
-        print(f"\n[{i}/{len(url_list)}] Processing: {url}")
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        TaskProgressColumn(),
+        TextColumn("{task.fields[status]}"),
+        console=console,
+    ) as progress:
+        task = progress.add_task(
+            "[cyan]Processing URLs...", total=len(url_list), status=""
+        )
 
-        success = _add_single_source(url, verbose, skip_content)
-        if success:
-            successful += 1
-        else:
-            failed += 1
+        for i, url in enumerate(url_list, 1):
+            progress.update(
+                task,
+                description=f"[cyan]Processing: {url[:50]}{'...' if len(url) > 50 else ''}",
+                status="",
+            )
 
-        # Add delay between requests to be respectful
-        if i < len(url_list) and delay > 0:
-            if verbose:
-                print(f"Waiting {delay} seconds...")
-            import time
+            success = _add_single_source(url, verbose, skip_content)
+            if success:
+                successful += 1
+                progress.update(task, status="[green]✓")
+            else:
+                failed += 1
+                progress.update(task, status="[red]✗")
 
-            time.sleep(delay)
+            progress.advance(task)
 
-    print(
-        f"\n📊 Summary: {successful} successful, {failed} failed out of {len(url_list)} total"
+            # Add delay between requests to be respectful
+            if i < len(url_list) and delay > 0:
+                progress.update(task, status=f"[yellow]Waiting {delay}s...")
+                time.sleep(delay)
+
+    console.print(
+        f"\n📊 Summary: [green]{successful} successful[/green], [red]{failed} failed[/red] out of {len(url_list)} total"
     )
 
 
@@ -709,57 +750,71 @@ def summarize_all(
         print(f"No sources found in {get_output_directory()}/ directory")
         return
 
-    print(f"Found {len(sources)} sources to summarize")
+    console.print(f"Found [bold]{len(sources)}[/bold] sources to summarize")
 
     successful = 0
     failed = 0
+    skipped = 0
 
-    for i, source_dir in enumerate(sources, 1):
-        print(f"\n[{i}/{len(sources)}] Processing: {source_dir.name}")
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        TaskProgressColumn(),
+        TextColumn("{task.fields[status]}"),
+        console=console,
+    ) as progress:
+        task = progress.add_task(
+            "[cyan]Summarizing sources...", total=len(sources), status=""
+        )
 
-        content_file = source_dir / "content.md"
-        if not content_file.exists():
-            print(f"⚠️  Content file not found: {content_file}")
-            failed += 1
-            continue
+        for i, source_dir in enumerate(sources, 1):
+            progress.update(
+                task, description=f"[cyan]Processing: {source_dir.name}", status=""
+            )
 
-        summary_file = source_dir / "summary.md"
-        if summary_file.exists():
-            if verbose:
-                print("Summary already exists, skipping...")
-            continue
+            content_file = source_dir / "content.md"
+            if not content_file.exists():
+                progress.update(task, status="[yellow]⚠️  No content")
+                failed += 1
+                progress.advance(task)
+                continue
 
-        try:
-            if verbose:
-                print(f"Reading content from: {content_file}")
+            summary_file = source_dir / "summary.md"
+            if summary_file.exists():
+                progress.update(task, status="[dim]Already exists")
+                skipped += 1
+                progress.advance(task)
+                continue
 
-            with open(content_file, "r") as f:
-                content = f.read()
+            try:
+                with open(content_file, "r") as f:
+                    content = f.read()
 
-            if verbose:
-                print(f"Content length: {len(content)} characters")
-                print(f"Using model: {os.environ.get('LLM_MODEL', 'not set')}")
+                progress.update(task, status="[yellow]Generating summary...")
+                summary = summarize_content(content)
 
-            summary = summarize_content(content)
+                with open(summary_file, "w") as f:
+                    f.write(summary)
 
-            with open(summary_file, "w") as f:
-                f.write(summary)
+                progress.update(task, status="[green]✓")
+                successful += 1
 
-            print(f"✅ Summary saved to: {summary_file}")
-            successful += 1
+            except Exception as e:
+                progress.update(task, status=f"[red]✗ {str(e)[:30]}...")
+                failed += 1
 
-        except Exception as e:
-            print(f"❌ Error processing {source_dir.name}: {e}")
-            failed += 1
+            progress.advance(task)
 
-        # Add delay between API calls
-        if i < len(sources) and delay > 0:
-            if verbose:
-                print(f"Waiting {delay} seconds...")
-            time.sleep(delay)
+            # Add delay between API calls
+            if i < len(sources) and delay > 0:
+                progress.update(task, status=f"[yellow]Waiting {delay}s...")
+                time.sleep(delay)
 
-    print(
-        f"\n📊 Summary: {successful} successful, {failed} failed out of {len(sources)} total"
+    console.print(
+        f"\n📊 Summary: [green]{successful} successful[/green], "
+        f"[yellow]{skipped} skipped[/yellow], "
+        f"[red]{failed} failed[/red] out of {len(sources)} total"
     )
 
 
@@ -962,116 +1017,149 @@ def crawl_site(
     site_dir = Path(get_output_directory()) / site_slug
     site_dir.mkdir(parents=True, exist_ok=True)
 
-    print(f"🕷️  Starting crawl of {base_domain}")
-    print(f"   Target directory: {site_dir}")
-    print(f"   Max depth: {max_depth}")
-    print(f"   Max pages: {max_pages}")
-    print(f"   Delay: {delay}s between requests")
+    console.print(f"[bold]🕷️  Starting crawl of {base_domain}[/bold]")
+    console.print(f"   Target directory: {site_dir}")
+    console.print(f"   Max depth: {max_depth}")
+    console.print(f"   Max pages: {max_pages}")
+    console.print(f"   Delay: {delay}s between requests")
 
     # Track visited URLs and queue
     visited = set()
     queue = [(url, 0)]  # (url, depth)
     crawled_count = 0
+    successful = 0
+    failed = 0
 
-    while queue and crawled_count < max_pages:
-        current_url, depth = queue.pop(0)
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        TaskProgressColumn(),
+        TextColumn("{task.fields[status]}"),
+        console=console,
+    ) as progress:
+        task = progress.add_task(
+            "[cyan]Crawling website...", total=max_pages, status=""
+        )
 
-        # Skip if already visited or depth exceeded
-        if current_url in visited or depth > max_depth:
-            continue
+        while queue and crawled_count < max_pages:
+            current_url, depth = queue.pop(0)
 
-        visited.add(current_url)
-        crawled_count += 1
-
-        print(f"\n[{crawled_count}/{max_pages}] Depth {depth}: {current_url}")
-
-        try:
-            # Add the current page as a source
-            if verbose:
-                print("  Adding source...")
-
-            success = _add_single_source(
-                current_url,
-                verbose=False,
-                skip_content=skip_content,
-                parent_dir=str(site_dir),
-            )
-            if not success:
-                print("  ⚠️  Failed to add source")
+            # Skip if already visited or depth exceeded
+            if current_url in visited or depth > max_depth:
                 continue
 
-            # Only extract links if we haven't reached max depth
-            if depth < max_depth:
+            visited.add(current_url)
+            crawled_count += 1
+
+            progress.update(
+                task,
+                description=f"[cyan]Depth {depth}: {current_url[:60]}{'...' if len(current_url) > 60 else ''}",
+                status="",
+            )
+
+            try:
+                # Add the current page as a source
                 if verbose:
-                    print("  Extracting links...")
+                    print("  Adding source...")
 
-                # Get the page content to extract links
-                headers = {
-                    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
-                }
-                response = requests.get(current_url, timeout=15, headers=headers)
-                response.raise_for_status()
-                soup = BeautifulSoup(response.content, "html.parser")
+                progress.update(task, status="[yellow]Adding source...")
+                success = _add_single_source(
+                    current_url,
+                    verbose=False,
+                    skip_content=skip_content,
+                    parent_dir=str(site_dir),
+                )
+                if not success:
+                    progress.update(task, status="[red]✗ Failed")
+                    failed += 1
+                    progress.advance(task)
+                    continue
 
-                # Find all links
-                links = soup.find_all("a", href=True)
-                new_links = []
+                successful += 1
 
-                for link in links:
-                    try:
-                        # Access href attribute directly from BeautifulSoup tag
-                        href = getattr(link, "attrs", {}).get("href")
-                        if not href or not isinstance(href, str):
+                # Only extract links if we haven't reached max depth
+                if depth < max_depth:
+                    if verbose:
+                        print("  Extracting links...")
+
+                    # Get the page content to extract links
+                    headers = {
+                        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
+                    }
+                    response = requests.get(current_url, timeout=15, headers=headers)
+                    response.raise_for_status()
+                    soup = BeautifulSoup(response.content, "html.parser")
+
+                    # Find all links
+                    links = soup.find_all("a", href=True)
+                    new_links = []
+
+                    for link in links:
+                        try:
+                            # Access href attribute directly from BeautifulSoup tag
+                            href = getattr(link, "attrs", {}).get("href")
+                            if not href or not isinstance(href, str):
+                                continue
+                        except (AttributeError, KeyError):
                             continue
-                    except (AttributeError, KeyError):
-                        continue
-                    # Convert relative URLs to absolute
-                    absolute_url = urljoin(current_url, href)
-                    parsed_link = urlparse(absolute_url)
+                        # Convert relative URLs to absolute
+                        absolute_url = urljoin(current_url, href)
+                        parsed_link = urlparse(absolute_url)
 
-                    # Only follow links within the same domain
-                    if (
-                        parsed_link.netloc == base_domain
-                        and absolute_url not in visited
-                        and absolute_url not in [q[0] for q in queue]
-                    ):
-                        # Skip common non-content links
-                        if not any(
-                            skip_pattern in absolute_url.lower()
-                            for skip_pattern in [
-                                "#",
-                                "javascript:",
-                                "mailto:",
-                                "tel:",
-                                ".pdf",
-                                ".zip",
-                                ".png",
-                                ".jpg",
-                                ".gif",
-                            ]
+                        # Only follow links within the same domain
+                        if (
+                            parsed_link.netloc == base_domain
+                            and absolute_url not in visited
+                            and absolute_url not in [q[0] for q in queue]
                         ):
-                            new_links.append(absolute_url)
+                            # Skip common non-content links
+                            if not any(
+                                skip_pattern in absolute_url.lower()
+                                for skip_pattern in [
+                                    "#",
+                                    "javascript:",
+                                    "mailto:",
+                                    "tel:",
+                                    ".pdf",
+                                    ".zip",
+                                    ".png",
+                                    ".jpg",
+                                    ".gif",
+                                ]
+                            ):
+                                new_links.append(absolute_url)
 
-                # Add new links to queue
-                for new_url in new_links:
-                    queue.append((new_url, depth + 1))
+                    # Add new links to queue
+                    for new_url in new_links:
+                        queue.append((new_url, depth + 1))
 
-                if verbose:
-                    print(f"  Found {len(new_links)} new links to crawl")
+                    if verbose:
+                        progress.update(
+                            task, status=f"[dim]Found {len(new_links)} links"
+                        )
 
-        except Exception as e:
-            print(f"  ❌ Error crawling {current_url}: {e}")
+                progress.update(task, status="[green]✓")
 
-        # Add delay between requests
-        if queue and delay > 0:
-            if verbose:
-                print(f"  Waiting {delay} seconds...")
-            time.sleep(delay)
+            except Exception as e:
+                progress.update(task, status=f"[red]✗ {str(e)[:30]}...")
+                failed += 1
 
-    print("\n✅ Crawl completed!")
-    print(f"   Pages crawled: {crawled_count}")
-    print(f"   Pages discovered but not crawled: {len(queue)}")
-    print("   Use 'reduct status' to see the added sources")
+            progress.advance(task)
+
+            # Add delay between requests
+            if queue and delay > 0:
+                progress.update(task, status=f"[yellow]Waiting {delay}s...")
+                time.sleep(delay)
+
+    console.print(
+        f"\n✅ Crawl completed! "
+        f"[green]{successful} pages crawled[/green], "
+        f"[red]{failed} failed[/red]"
+    )
+    console.print(f"   Pages crawled: {crawled_count}")
+    console.print(f"   Pages discovered but not crawled: {len(queue)}")
+    console.print("   Use 'reduct status' to see the added sources")
 
 
 def main() -> None:
