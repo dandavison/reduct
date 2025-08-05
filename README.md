@@ -20,6 +20,10 @@ uv run reduct summarize article
 
 # 5. Transform with custom analysis
 uv run reduct transform article "Extract key points as bullet list"
+
+# 6. Or pipe commands together
+uv run reduct transcribe -t "https://youtube.com/watch?v=..." | \
+  uv run reduct transform "Create a clean summary"
 ```
 
 ## Overview
@@ -113,17 +117,18 @@ uv run reduct add-sources-batch ai_reading_list.txt --delay 2.0
 ### Transcription
 
 ```bash
-# Transcribe from YouTube URL
-uv run reduct transcribe --transcribe "https://youtube.com/watch?v=..."
+# Transcribe from YouTube URL (outputs to stdout by default)
+uv run reduct transcribe -t "https://youtube.com/watch?v=..."
 
 # Transcribe from local audio file
-uv run reduct transcribe --transcribe "audio.mp3"
+uv run reduct transcribe -t "audio.mp3"
 
-# Output to stdout
-uv run reduct transcribe --transcribe "https://youtube.com/watch?v=..." --output-file -
+# Save to file instead of stdout
+uv run reduct transcribe -t "https://youtube.com/watch?v=..." -o transcript.txt
 
-# Custom output file
-uv run reduct transcribe --transcribe "https://youtube.com/watch?v=..." --output-file "transcript.txt"
+# Pipe directly to transformation
+uv run reduct transcribe -t "https://youtube.com/watch?v=..." | \
+  uv run reduct transform "Clean up the transcript and format as paragraphs"
 ```
 
 ### Summarization
@@ -154,29 +159,28 @@ uv run reduct summarize-all --verbose
 
 ### Transformation
 
-Transform content using custom LLM prompts for specific analysis or reformatting tasks.
+Transform content using custom LLM prompts. Reads from stdin by default for easy piping.
 
 ```bash
-# Extract specific information
-uv run reduct transform agents "Extract all technical challenges mentioned"
+# Transform from stdin (pipe from other commands)
+echo "Raw text content" | uv run reduct transform "Format as bullet points"
 
-# Reformat content
-uv run reduct transform agents "Rewrite as a bulleted list of key points"
+# Transform from a source directory
+uv run reduct transform "Extract key points" --source agents
 
-# Analysis
-uv run reduct transform agents "Identify and explain all AI/ML concepts mentioned"
+# Chain multiple operations
+uv run reduct transcribe -t "https://youtube.com/watch?v=..." | \
+  uv run reduct transform "Clean up transcript" | \
+  uv run reduct transform "Summarize in 3 bullet points"
 
-# Output to stdout
-uv run reduct transform agents "Create a FAQ from this content" --output-file -
-
-# Save to custom file
-uv run reduct transform agents "Summarize in 3 paragraphs" --output-file analysis.md
+# Save transformation to file
+uv run reduct transform "Create FAQ" --source agents -o faq.md
 
 # Verbose output
-uv run reduct transform agents "Extract action items" --verbose
+uv run reduct transform "Extract action items" --source agents --verbose
 ```
 
-The transform command saves results to `transform.md` by default, allowing you to keep multiple analysis outputs alongside the original content and summary.
+By default, transform reads from stdin and outputs to stdout, making it perfect for Unix-style pipelines.
 
 ### Status
 
@@ -308,10 +312,11 @@ ls compendia/agents/transform.md
 1. **Use batch processing** for large reading lists
 2. **Set appropriate delays** (1-2 seconds) for web scraping
 3. **Track publication dates** for time-sensitive research
-4. **Use --verbose** for debugging and progress tracking
+4. **Use --verbose** for debugging and progress tracking (goes to stderr when piping)
 5. **Use transform for specific analysis** - extract key points, create FAQs, identify patterns
-6. **Chain operations** - first summarize, then transform summaries for meta-analysis
-7. **Environment variables** - Set `LLM_MODEL` and `REDUCT_OUTPUT_DIRECTORY` in your shell profile
+6. **Chain operations** - pipe transcribe → transform → transform for multi-step processing
+7. **Unix philosophy** - transcribe and transform default to stdout for easy piping
+8. **Environment variables** - Set `LLM_MODEL` and `REDUCT_OUTPUT_DIRECTORY` in your shell profile
 
 ## Next Steps
 

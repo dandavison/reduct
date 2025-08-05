@@ -1,4 +1,5 @@
 import os
+import sys
 import tempfile
 import time
 import urllib.parse
@@ -189,7 +190,7 @@ def transcribe_from_url(url: str, verbose: bool = False) -> str:
         }
 
         if verbose:
-            print(f"Downloading audio from: {url}")
+            print(f"Downloading audio from: {url}", file=sys.stderr)
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
@@ -197,11 +198,11 @@ def transcribe_from_url(url: str, verbose: bool = False) -> str:
         audio_file = os.path.join(temp_dir, "audio.mp3")
 
         if verbose:
-            print("Loading Whisper model...")
+            print("Loading Whisper model...", file=sys.stderr)
         model = whisper.load_model("base")
 
         if verbose:
-            print("Transcribing audio...")
+            print("Transcribing audio...", file=sys.stderr)
         result = model.transcribe(audio_file, verbose=verbose)
 
         return str(result["text"])
@@ -213,11 +214,11 @@ def transcribe_from_file(filepath: str, verbose: bool = False) -> str:
         raise typer.BadParameter(f"File not found: {filepath}")
 
     if verbose:
-        print("Loading Whisper model...")
+        print("Loading Whisper model...", file=sys.stderr)
     model = whisper.load_model("base")
 
     if verbose:
-        print(f"Transcribing file: {filepath}")
+        print(f"Transcribing file: {filepath}", file=sys.stderr)
     result = model.transcribe(filepath, verbose=verbose)
 
     return str(result["text"])
@@ -538,7 +539,10 @@ def transcribe(
         ..., "--transcribe", "-t", help="YouTube URL or local file path to transcribe"
     ),
     output_file: str = typer.Option(
-        None, "--output-file", "-o", help="Output file path (use '-' for stdout)"
+        "-",
+        "--output-file",
+        "-o",
+        help="Output file path (use '-' for stdout, default: stdout)",
     ),
     verbose: bool = typer.Option(
         False, "--verbose", "-v", help="Enable verbose output"
@@ -552,29 +556,26 @@ def transcribe(
     try:
         if is_url(source):
             if verbose:
-                print(f"Detected URL input: {source}")
+                print(f"Detected URL input: {source}", file=sys.stderr)
             transcript = transcribe_from_url(source, verbose)
         else:
             if verbose:
-                print(f"Detected file input: {source}")
+                print(f"Detected file input: {source}", file=sys.stderr)
             transcript = transcribe_from_file(source, verbose)
 
-            # Save transcript
+        # Save transcript
         if output_file == "-":
             print(transcript)
         else:
-            if output_file is None:
-                output_path = get_output_filename(source, is_url(source))
-            else:
-                output_path = output_file
+            output_path = output_file
 
             with open(output_path, "w") as f:
                 f.write(transcript)
 
-            print(f"Transcript saved to: {output_path}")
+            print(f"Transcript saved to: {output_path}", file=sys.stderr)
 
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"Error: {e}", file=sys.stderr)
         raise typer.Exit(1)
 
 
@@ -629,10 +630,18 @@ def summarize(
 
 @app.command()
 def transform(
-    source: str = typer.Argument(..., help="Source directory path to transform"),
     prompt: str = typer.Argument(..., help="Transformation prompt for the LLM"),
+    source: str = typer.Option(
+        "-",
+        "--source",
+        "-s",
+        help="Source directory path or '-' for stdin (default: stdin)",
+    ),
     output_file: str = typer.Option(
-        None, "--output-file", "-o", help="Output file path (use '-' for stdout)"
+        "-",
+        "--output-file",
+        "-o",
+        help="Output file path (use '-' for stdout, default: stdout)",
     ),
     verbose: bool = typer.Option(
         False, "--verbose", "-v", help="Enable verbose output"
@@ -640,42 +649,48 @@ def transform(
 ):
     """Transform content from a specific source using a custom prompt."""
 
-    source_dir = Path(source)
+    # Read content from stdin or file
+    if source == "-":
+        if verbose:
+            print("Reading content from stdin...", file=sys.stderr)
+        content = sys.stdin.read()
+    else:
+        source_dir = Path(source)
 
-    if not source_dir.exists():
-        print(f"Source directory not found: {source_dir}")
-        raise typer.Exit(1)
+        if not source_dir.exists():
+            print(f"Source directory not found: {source_dir}", file=sys.stderr)
+            raise typer.Exit(1)
 
-    content_file = source_dir / "content.md"
-    if not content_file.exists():
-        print(f"Content file not found: {content_file}")
-        raise typer.Exit(1)
+        content_file = source_dir / "content.md"
+        if not content_file.exists():
+            print(f"Content file not found: {content_file}", file=sys.stderr)
+            raise typer.Exit(1)
+
+        if verbose:
+            print(f"Reading content from: {content_file}", file=sys.stderr)
+
+        with open(content_file, "r") as f:
+            content = f.read()
 
     if verbose:
-        print(f"Reading content from: {content_file}")
-
-    with open(content_file, "r") as f:
-        content = f.read()
-
-    if verbose:
-        print(f"Content length: {len(content)} characters")
-        print(f"Using model: {os.environ.get('LLM_MODEL', 'not set')}")
-        print(f"Transform prompt: {prompt[:100]}{'...' if len(prompt) > 100 else ''}")
+        print(f"Content length: {len(content)} characters", file=sys.stderr)
+        print(f"Using model: {os.environ.get('LLM_MODEL', 'not set')}", file=sys.stderr)
+        print(
+            f"Transform prompt: {prompt[:100]}{'...' if len(prompt) > 100 else ''}",
+            file=sys.stderr,
+        )
 
     result = transform_content(content, prompt)
 
     if output_file == "-":
         print(result)
     else:
-        if output_file is None:
-            output_path = source_dir / "transform.md"
-        else:
-            output_path = Path(output_file)
+        output_path = Path(output_file)
 
         with open(output_path, "w") as f:
             f.write(result)
 
-        print(f"Transform result saved to: {output_path}")
+        print(f"Transform result saved to: {output_path}", file=sys.stderr)
 
 
 @app.command()
