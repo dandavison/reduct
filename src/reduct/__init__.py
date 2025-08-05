@@ -78,6 +78,55 @@ Content to summarize:
     return str(response.choices[0].message.content)
 
 
+def transform_content(content: str, prompt: str) -> str:
+    """Transform content using LLM with custom prompt."""
+    if "LLM_MODEL" not in os.environ:
+        print("Error: Set LLM_MODEL environment variable")
+        raise typer.Exit(1)
+
+    model = os.environ["LLM_MODEL"]
+
+    # Get API key - check LLM_KEY first, then fall back to provider-specific keys
+    api_key = None
+    if "LLM_KEY" in os.environ:
+        api_key = os.environ["LLM_KEY"]
+    elif model.startswith("anthropic/") and "ANTHROPIC_API_KEY" in os.environ:
+        api_key = os.environ["ANTHROPIC_API_KEY"]
+    elif (
+        model.startswith("openai/") or model.startswith("gpt-")
+    ) and "OPENAI_API_KEY" in os.environ:
+        api_key = os.environ["OPENAI_API_KEY"]
+
+    if not api_key:
+        print(
+            "Error: Set LLM_KEY or provider-specific API key (ANTHROPIC_API_KEY, OPENAI_API_KEY)"
+        )
+        raise typer.Exit(1)
+
+    # Set the appropriate API key for litellm
+    if model.startswith("anthropic/"):
+        os.environ["ANTHROPIC_API_KEY"] = api_key
+    elif model.startswith("openai/") or model.startswith("gpt-"):
+        os.environ["OPENAI_API_KEY"] = api_key
+    else:
+        # For other providers, use the generic API_KEY
+        os.environ["API_KEY"] = api_key
+
+    full_prompt = f"""{prompt}
+
+Content to transform:
+{content}"""
+
+    response = litellm.completion(
+        model=model,
+        messages=[{"role": "user", "content": full_prompt}],
+        max_tokens=1500,
+        temperature=0.3,
+    )
+
+    return str(response.choices[0].message.content)
+
+
 def get_sources_list() -> list[Path]:
     """Get list of all source directories."""
     sources_dir = Path(get_output_directory())
@@ -576,6 +625,57 @@ def summarize(
             f.write(summary)
 
         print(f"Summary saved to: {output_path}")
+
+
+@app.command()
+def transform(
+    source: str = typer.Argument(..., help="Source directory path to transform"),
+    prompt: str = typer.Argument(..., help="Transformation prompt for the LLM"),
+    output_file: str = typer.Option(
+        None, "--output-file", "-o", help="Output file path (use '-' for stdout)"
+    ),
+    verbose: bool = typer.Option(
+        False, "--verbose", "-v", help="Enable verbose output"
+    ),
+):
+    """Transform content from a specific source using a custom prompt."""
+
+    source_dir = Path(source)
+
+    if not source_dir.exists():
+        print(f"Source directory not found: {source_dir}")
+        raise typer.Exit(1)
+
+    content_file = source_dir / "content.md"
+    if not content_file.exists():
+        print(f"Content file not found: {content_file}")
+        raise typer.Exit(1)
+
+    if verbose:
+        print(f"Reading content from: {content_file}")
+
+    with open(content_file, "r") as f:
+        content = f.read()
+
+    if verbose:
+        print(f"Content length: {len(content)} characters")
+        print(f"Using model: {os.environ.get('LLM_MODEL', 'not set')}")
+        print(f"Transform prompt: {prompt[:100]}{'...' if len(prompt) > 100 else ''}")
+
+    result = transform_content(content, prompt)
+
+    if output_file == "-":
+        print(result)
+    else:
+        if output_file is None:
+            output_path = source_dir / "transform.md"
+        else:
+            output_path = Path(output_file)
+
+        with open(output_path, "w") as f:
+            f.write(result)
+
+        print(f"Transform result saved to: {output_path}")
 
 
 @app.command()
