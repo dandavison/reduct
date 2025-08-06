@@ -1,3 +1,5 @@
+*This project is experimental, LLM-generated, and comes with zero recommendations / guarantees.*
+
 # Reduct
 
 A tool for ingesting and reducing information from internet sources.
