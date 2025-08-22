@@ -81,6 +81,43 @@ function groupTextNodes(textNodes) {
   return groups;
 }
 
+function convertToHtml(text) {
+  // Return original text if no formatting detected
+  if (!text.includes('•') && !text.includes('*') && !text.includes('-') && !text.includes('\n')) {
+    return text;
+  }
+  
+  let html = text;
+  
+  // Convert bullet lists (various formats)
+  // Handle lists with • bullets
+  html = html.replace(/^([•\*\-])\s+(.+)$/gm, '<li>$2</li>');
+  
+  // Handle numbered lists
+  html = html.replace(/^\d+\.\s+(.+)$/gm, '<li>$1</li>');
+  
+  // Wrap consecutive <li> elements in <ul> or <ol>
+  html = html.replace(/(<li>.*<\/li>\s*)+/g, (match) => {
+    // Check if it's a numbered list
+    const isNumbered = /^\d+\./.test(text);
+    const listTag = isNumbered ? 'ol' : 'ul';
+    return `<${listTag}>${match}</${listTag}>`;
+  });
+  
+  // Convert paragraphs (double newlines)
+  html = html.replace(/\n\n+/g, '</p><p>');
+  
+  // Wrap in paragraph tags if needed
+  if (!html.startsWith('<')) {
+    html = '<p>' + html + '</p>';
+  }
+  
+  // Clean up empty paragraphs
+  html = html.replace(/<p>\s*<\/p>/g, '');
+  
+  return html;
+}
+
 async function reducePageContent(reductionLevel = 50, customPrompt = null) {
   if (isReduced) {
     console.log('Page is already reduced');
@@ -143,11 +180,24 @@ async function reducePageContent(reductionLevel = 50, customPrompt = null) {
       }
       
       if (response.reducedText) {
-        // For now, replace the first text node and clear the others
-        // In a more sophisticated version, we'd distribute the reduced text
-        nodes[0].nodeValue = response.reducedText;
-        for (let i = 1; i < nodes.length; i++) {
-          nodes[i].nodeValue = '';
+        // Check if the reduced text contains formatting that needs HTML
+        const formattedHtml = convertToHtml(response.reducedText);
+        
+        if (formattedHtml !== response.reducedText) {
+          // Insert HTML content
+          const wrapper = document.createElement('div');
+          wrapper.innerHTML = formattedHtml;
+          wrapper.className = 'reduct-formatted';
+          
+          // Replace the container's content with the formatted HTML
+          container.innerHTML = '';
+          container.appendChild(wrapper);
+        } else {
+          // Plain text - use the original approach
+          nodes[0].nodeValue = response.reducedText;
+          for (let i = 1; i < nodes.length; i++) {
+            nodes[i].nodeValue = '';
+          }
         }
       }
       
@@ -177,6 +227,15 @@ async function reducePageContent(reductionLevel = 50, customPrompt = null) {
 function restoreOriginalContent() {
   if (!isReduced) return;
   
+  // First, remove any formatted content we added
+  document.querySelectorAll('.reduct-formatted').forEach(element => {
+    const parent = element.parentElement;
+    if (parent) {
+      parent.removeChild(element);
+    }
+  });
+  
+  // Then restore original text nodes
   originalContent.forEach((originalText, node) => {
     if (node.parentElement) { // Check if node is still in DOM
       node.nodeValue = originalText;

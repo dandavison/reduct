@@ -70,3 +70,33 @@
   background-color: rgba(59, 130, 246, 0.05);
   transition: background-color 0.3s;
 }
+
+/* Styles for formatted content */
+.reduct-formatted {
+  /* Inherit font styles from parent */
+  font: inherit;
+  color: inherit;
+  line-height: inherit;
+}
+
+.reduct-formatted p {
+  margin: 1em 0;
+}
+
+.reduct-formatted p:first-child {
+  margin-top: 0;
+}
+
+.reduct-formatted p:last-child {
+  margin-bottom: 0;
+}
+
+.reduct-formatted ul,
+.reduct-formatted ol {
+  margin: 1em 0;
+  padding-left: 2em;
+}
+
+.reduct-formatted li {
+  margin: 0.5em 0;
+}
