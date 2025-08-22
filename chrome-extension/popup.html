@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body {
+      width: 300px;
+      padding: 16px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+    
+    h1 {
+      font-size: 18px;
+      margin: 0 0 16px 0;
+      color: #333;
+    }
+    
+    .controls {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    
+    .slider-container {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    
+    .slider-label {
+      font-size: 14px;
+      color: #666;
+      display: flex;
+      justify-content: space-between;
+    }
+    
+    input[type="range"] {
+      width: 100%;
+    }
+    
+    button {
+      padding: 8px 16px;
+      font-size: 14px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    
+    #reduceBtn {
+      background-color: #2563eb;
+      color: white;
+    }
+    
+    #reduceBtn:hover {
+      background-color: #1d4ed8;
+    }
+    
+    #reduceBtn:disabled {
+      background-color: #93c5fd;
+      cursor: not-allowed;
+    }
+    
+    #restoreBtn {
+      background-color: #6b7280;
+      color: white;
+    }
+    
+    #restoreBtn:hover {
+      background-color: #4b5563;
+    }
+    
+    #restoreBtn:disabled {
+      background-color: #d1d5db;
+      cursor: not-allowed;
+    }
+    
+    .status {
+      margin-top: 12px;
+      padding: 8px;
+      border-radius: 4px;
+      font-size: 13px;
+      text-align: center;
+    }
+    
+    .status.error {
+      background-color: #fee2e2;
+      color: #991b1b;
+    }
+    
+    .status.success {
+      background-color: #dcfce7;
+      color: #166534;
+    }
+    
+    .status.info {
+      background-color: #e0e7ff;
+      color: #3730a3;
+    }
+    
+    .server-status {
+      font-size: 12px;
+      color: #666;
+      text-align: center;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid #e5e7eb;
+    }
+    
+    .server-status.online {
+      color: #059669;
+    }
+    
+    .server-status.offline {
+      color: #dc2626;
+    }
+    
+    .progress-bar {
+      width: 100%;
+      height: 20px;
+      background-color: #f3f4f6;
+      border-radius: 10px;
+      overflow: hidden;
+      position: relative;
+      margin: 12px 0;
+    }
+    
+    .progress-bar-fill {
+      height: 100%;
+      background-color: #3b82f6;
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+    
+    .progress-bar-text {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 12px;
+      color: #333;
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+  <h1>Reduct - Text Reducer</h1>
+  
+  <div class="controls">
+    <div class="slider-container">
+      <div class="slider-label">
+        <span>Reduct Factor</span>
+        <span id="reductionValue">50%</span>
+      </div>
+      <input type="range" id="reductionSlider" min="5" max="80" value="50" step="5">
+    </div>
+    
+    <details id="advancedOptions">
+      <summary style="cursor: pointer; font-size: 13px; color: #666; margin: 8px 0;">Advanced Options</summary>
+      <div style="margin-top: 8px;">
+        <label for="customPrompt" style="font-size: 13px; color: #666; display: block; margin-bottom: 4px;">Custom Prompt:</label>
+        <textarea id="customPrompt" rows="7" style="width: 100%; font-size: 12px; padding: 6px; border: 1px solid #d1d5db; border-radius: 4px; resize: vertical;">Reduce this text to approximately {REDUCT_FACTOR}% of its original length. Remove filler, redundancy, and verbose explanations while retaining all meaningful semantic content, key points, and factual information. Maintain the original tone and style. Output as clean HTML using these tags: &lt;p&gt;, &lt;ul&gt;, &lt;ol&gt;, &lt;li&gt;, &lt;strong&gt;, &lt;em&gt;, &lt;h3&gt;, &lt;blockquote&gt;, &lt;details&gt;, &lt;summary&gt;. Use &lt;details&gt;&lt;summary&gt;Title&lt;/summary&gt;content&lt;/details&gt; for less important information. IMPORTANT: Output ONLY the HTML without any introduction, wrapper tags, or commentary.</textarea>
+      </div>
+    </details>
+    
+    <button id="reduceBtn">Reduce Page</button>
+    <button id="restoreBtn" disabled>Restore Original</button>
+    
+    <div id="progressBar" class="progress-bar" style="display: none;">
+      <div class="progress-bar-fill"></div>
+      <div class="progress-bar-text">Processing...</div>
+    </div>
+    
+    <div id="status" class="status" style="display: none;"></div>
+  </div>
+  
+  <div id="serverStatus" class="server-status">Checking server...</div>
+  
+  <script src="popup.js"></script>
+</body>
+</html>
