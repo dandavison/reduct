@@ -163,3 +163,16 @@ uv run reduct summarize-all
 # Analyze specific topics
 uv run reduct transform "What does this say about X?" --source article
 ```
+
+## Chrome Extension
+
+A Chrome extension is included for reducing web page text in-place:
+
+```bash
+# Start the server
+uv run reduct-server
+
+# Load extension from chrome-extension/ directory in Chrome
+```
+
+See [chrome-extension/README.md](chrome-extension/README.md) for details.
