@@ -6,15 +6,16 @@ let isReduced = false;
 // Listen for messages from popup/background
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'reduce') {
-    reducePageContent(request.reductionLevel);
-    sendResponse({success: true});
+    reducePageContent(request.reductionLevel, request.customPrompt)
+      .then(() => sendResponse({success: true}))
+      .catch(error => sendResponse({success: false, error: error.message}));
+    return true; // Keep message channel open for async response
   } else if (request.action === 'restore') {
     restoreOriginalContent();
     sendResponse({success: true});
   } else if (request.action === 'getStatus') {
     sendResponse({isReduced: isReduced});
   }
-  return true; // Keep message channel open for async response
 });
 
 function getTextNodes(element) {
@@ -75,7 +76,7 @@ function groupTextNodes(textNodes) {
   return groups;
 }
 
-async function reducePageContent(reductionLevel = 50) {
+async function reducePageContent(reductionLevel = 50, customPrompt = null) {
   if (isReduced) {
     console.log('Page is already reduced');
     return;
@@ -88,6 +89,16 @@ async function reducePageContent(reductionLevel = 50) {
     // Get all text nodes
     const textNodes = getTextNodes(document.body);
     const groups = groupTextNodes(textNodes);
+    
+    // Send progress update
+    await chrome.runtime.sendMessage({
+      action: 'updateProgress',
+      message: `Processing ${groups.size} text blocks...`,
+      current: 0,
+      total: groups.size
+    });
+    
+    let processed = 0;
     
     // Process each group of text nodes
     for (const [container, nodes] of groups) {
@@ -111,7 +122,8 @@ async function reducePageContent(reductionLevel = 50) {
       const response = await chrome.runtime.sendMessage({
         action: 'reduceText',
         text: combinedText,
-        reductionLevel: reductionLevel
+        reductionLevel: reductionLevel,
+        customPrompt: customPrompt
       });
       
       if (response.error) {
@@ -127,6 +139,15 @@ async function reducePageContent(reductionLevel = 50) {
           nodes[i].nodeValue = '';
         }
       }
+      
+      // Update progress
+      processed++;
+      await chrome.runtime.sendMessage({
+        action: 'updateProgress',
+        message: `Processing text blocks...`,
+        current: processed,
+        total: groups.size
+      });
     }
     
     isReduced = true;
@@ -156,7 +177,7 @@ function restoreOriginalContent() {
 function showLoadingIndicator() {
   const indicator = document.createElement('div');
   indicator.id = 'reduct-loading';
-  indicator.textContent = 'Reducing content...';
+  indicator.innerHTML = '<div class="reduct-loading-text">Reducing content...</div><div class="reduct-loading-progress"></div>';
   document.body.appendChild(indicator);
 }
 

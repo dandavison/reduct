@@ -12,12 +12,37 @@
   font-size: 14px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   z-index: 10000;
-  animation: pulse 1.5s ease-in-out infinite;
+  min-width: 200px;
+}
+
+.reduct-loading-text {
+  margin-bottom: 8px;
+}
+
+.reduct-loading-progress {
+  height: 4px;
+  background-color: rgba(255, 255, 255, 0.3);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.reduct-loading-progress::after {
+  content: '';
+  display: block;
+  height: 100%;
+  background-color: white;
+  animation: progress 1.5s ease-in-out infinite;
 }
 
 @keyframes pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.8; }
+}
+
+@keyframes progress {
+  0% { width: 0%; }
+  50% { width: 100%; }
+  100% { width: 0%; }
 }
 
 #reduct-indicator {

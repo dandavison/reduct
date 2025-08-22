@@ -5,15 +5,28 @@ const SERVER_URL = 'http://localhost:8000';
 // Listen for messages from content script
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'reduceText') {
-    handleTextReduction(request.text, request.reductionLevel)
+    handleTextReduction(request.text, request.reductionLevel, request.customPrompt)
       .then(reducedText => sendResponse({reducedText}))
       .catch(error => sendResponse({error: error.message}));
     return true; // Keep message channel open for async response
+  } else if (request.action === 'updateProgress') {
+    // Forward progress updates to popup if it's open
+    chrome.runtime.sendMessage({
+      action: 'progressUpdate',
+      ...request
+    }).catch(() => {
+      // Popup might be closed, ignore error
+    });
   }
 });
 
-async function handleTextReduction(text, reductionLevel = 50) {
+async function handleTextReduction(text, reductionLevel = 50, customPrompt = null) {
   try {
+    let prompt = customPrompt;
+    if (!prompt) {
+      prompt = `Reduce this text to approximately ${reductionLevel}% of its original length. Remove filler, redundancy, and verbose explanations while retaining all meaningful semantic content, key points, and factual information. Maintain the original tone and style. IMPORTANT: Output ONLY the reduced text without any introduction, explanation, or commentary about the reduction process.`;
+    }
+    
     const response = await fetch(`${SERVER_URL}/reduce`, {
       method: 'POST',
       headers: {
@@ -22,7 +35,7 @@ async function handleTextReduction(text, reductionLevel = 50) {
       body: JSON.stringify({
         text: text,
         reduction_level: reductionLevel,
-        prompt: `Reduce this text to approximately ${reductionLevel}% of its original length. Remove filler, redundancy, and verbose explanations while retaining all meaningful semantic content, key points, and factual information. Maintain the original tone and style.`
+        prompt: prompt
       })
     });
     

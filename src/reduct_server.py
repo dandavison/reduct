@@ -78,8 +78,8 @@ async def reduce_text(request: ReductionRequest):
                 f"of its original length. Remove filler, redundancy, and verbose "
                 f"explanations while retaining all meaningful semantic content, "
                 f"key points, and factual information. Maintain the original tone "
-                f"and style. Do not add any introduction or explanation - just "
-                f"provide the reduced text."
+                f"and style. IMPORTANT: Output ONLY the reduced text without any "
+                f"introduction, explanation, or commentary about the reduction process."
             )
 
         # Call the transform_content function from reduct

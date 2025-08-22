@@ -6,6 +6,10 @@ const reductionSlider = document.getElementById('reductionSlider');
 const reductionValue = document.getElementById('reductionValue');
 const statusDiv = document.getElementById('status');
 const serverStatusDiv = document.getElementById('serverStatus');
+const progressBar = document.getElementById('progressBar');
+const progressBarFill = document.querySelector('.progress-bar-fill');
+const progressBarText = document.querySelector('.progress-bar-text');
+const customPromptTextarea = document.getElementById('customPrompt');
 
 // Update reduction value display
 reductionSlider.addEventListener('input', (e) => {
@@ -26,28 +30,41 @@ chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
   });
 });
 
+// Listen for progress updates from background script
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === 'progressUpdate') {
+    updateProgress(request.current, request.total, request.message);
+  }
+});
+
 // Reduce button click
 reduceBtn.addEventListener('click', async () => {
   const [tab] = await chrome.tabs.query({active: true, currentWindow: true});
   
   reduceBtn.disabled = true;
-  showStatus('Reducing page content...', 'info');
+  statusDiv.style.display = 'none';
+  showProgress();
   
   try {
+    const customPrompt = customPromptTextarea.value.trim();
     const response = await chrome.tabs.sendMessage(tab.id, {
       action: 'reduce',
-      reductionLevel: parseInt(reductionSlider.value)
+      reductionLevel: parseInt(reductionSlider.value),
+      customPrompt: customPrompt || null
     });
     
     if (response && response.success) {
+      hideProgress();
       showStatus('Page reduced successfully!', 'success');
       restoreBtn.disabled = false;
     } else {
-      showStatus('Failed to reduce page', 'error');
+      hideProgress();
+      showStatus(response.error || 'Failed to reduce page', 'error');
       reduceBtn.disabled = false;
     }
   } catch (error) {
     console.error('Error:', error);
+    hideProgress();
     showStatus('Error: Is the page fully loaded?', 'error');
     reduceBtn.disabled = false;
   }
@@ -88,6 +105,22 @@ function showStatus(message, type) {
       statusDiv.style.display = 'none';
     }, 3000);
   }
+}
+
+function showProgress() {
+  progressBar.style.display = 'block';
+  progressBarFill.style.width = '0%';
+  progressBarText.textContent = 'Processing...';
+}
+
+function hideProgress() {
+  progressBar.style.display = 'none';
+}
+
+function updateProgress(current, total, message) {
+  const percentage = total > 0 ? Math.round((current / total) * 100) : 0;
+  progressBarFill.style.width = `${percentage}%`;
+  progressBarText.textContent = message || `Processing... ${percentage}%`;
 }
 
 async function checkServerStatus() {
