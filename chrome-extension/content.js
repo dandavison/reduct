@@ -2,10 +2,12 @@
 
 let originalContent = new Map();
 let isReduced = false;
+let isCancelled = false;
 
 // Listen for messages from popup/background
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'reduce') {
+    isCancelled = false;
     reducePageContent(request.reductionLevel, request.customPrompt)
       .then(() => sendResponse({success: true}))
       .catch(error => sendResponse({success: false, error: error.message}));
@@ -15,6 +17,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     sendResponse({success: true});
   } else if (request.action === 'getStatus') {
     sendResponse({isReduced: isReduced});
+  } else if (request.action === 'cancel') {
+    isCancelled = true;
+    sendResponse({success: true});
   }
 });
 
@@ -102,6 +107,12 @@ async function reducePageContent(reductionLevel = 50, customPrompt = null) {
     
     // Process each group of text nodes
     for (const [container, nodes] of groups) {
+      // Check if cancelled
+      if (isCancelled) {
+        console.log('Reduction cancelled by user');
+        break;
+      }
+      
       // Combine text from all nodes in this container
       const originalTexts = nodes.map(node => ({
         node: node,
@@ -150,13 +161,16 @@ async function reducePageContent(reductionLevel = 50, customPrompt = null) {
       });
     }
     
-    isReduced = true;
-    addReducedIndicator();
+    if (!isCancelled) {
+      isReduced = true;
+      addReducedIndicator();
+    }
   } catch (error) {
     console.error('Error in reducePageContent:', error);
     alert('Error reducing page content. Make sure the reduct server is running.');
   } finally {
     hideLoadingIndicator();
+    isCancelled = false;
   }
 }
 

@@ -21,10 +21,12 @@ Chrome extension for reducing web page text content using AI while preserving la
 
 1. Click the Reduct extension icon in your toolbar
 2. Adjust the reduction level (20-80%)
-3. (Optional) Click "Advanced Options" to enter a custom prompt
+3. (Optional) Click "Advanced Options" to customize the prompt
+   - The default prompt is pre-filled and shows {LEVEL} which updates with your slider
 4. Click "Reduce Page" to reduce the current page's text
 5. Watch the progress bar as text blocks are processed
-6. Click "Restore Original" to revert changes
+   - Click "Cancel" to stop the reduction and restore original content
+6. Click "Restore Original" to revert changes after completion
 
 The extension preserves:
 - Page layout and structure
@@ -36,8 +38,9 @@ The extension preserves:
 
 - Real-time server status checking
 - Visual progress bar showing reduction progress
+- Cancel button to stop reduction mid-process
 - Adjustable reduction level (20-80%)
-- Custom prompt support for specialized reductions
+- Pre-populated custom prompt with dynamic {LEVEL} placeholder
 - One-click restore to original content
 - Preserves page structure and non-text elements
 
