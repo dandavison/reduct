@@ -149,17 +149,17 @@
   <div class="controls">
     <div class="slider-container">
       <div class="slider-label">
-        <span>Reduction Level</span>
+        <span>Reduct Factor</span>
         <span id="reductionValue">50%</span>
       </div>
-      <input type="range" id="reductionSlider" min="20" max="80" value="50" step="10">
+      <input type="range" id="reductionSlider" min="5" max="80" value="50" step="5">
     </div>
     
     <details id="advancedOptions">
       <summary style="cursor: pointer; font-size: 13px; color: #666; margin: 8px 0;">Advanced Options</summary>
       <div style="margin-top: 8px;">
         <label for="customPrompt" style="font-size: 13px; color: #666; display: block; margin-bottom: 4px;">Custom Prompt:</label>
-        <textarea id="customPrompt" rows="6" style="width: 100%; font-size: 12px; padding: 6px; border: 1px solid #d1d5db; border-radius: 4px; resize: vertical;">Reduce this text to approximately {LEVEL}% of its original length. Remove filler, redundancy, and verbose explanations while retaining all meaningful semantic content, key points, and factual information. Maintain the original tone and style. Use markdown formatting when appropriate (e.g., * for bullet points, 1. for numbered lists). For less important details that should be collapsible, use [Details: Summary text]content[/Details]. IMPORTANT: Output ONLY the reduced text without any introduction, explanation, or commentary about the reduction process.</textarea>
+        <textarea id="customPrompt" rows="7" style="width: 100%; font-size: 12px; padding: 6px; border: 1px solid #d1d5db; border-radius: 4px; resize: vertical;">Reduce this text to approximately {REDUCT_FACTOR}% of its original length. Remove filler, redundancy, and verbose explanations while retaining all meaningful semantic content, key points, and factual information. Maintain the original tone and style. Output as clean HTML using these tags: &lt;p&gt;, &lt;ul&gt;, &lt;ol&gt;, &lt;li&gt;, &lt;strong&gt;, &lt;em&gt;, &lt;h3&gt;, &lt;blockquote&gt;, &lt;details&gt;, &lt;summary&gt;. Use &lt;details&gt;&lt;summary&gt;Title&lt;/summary&gt;content&lt;/details&gt; for less important information. IMPORTANT: Output ONLY the HTML without any introduction, wrapper tags, or commentary.</textarea>
       </div>
     </details>
     

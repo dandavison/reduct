@@ -20,9 +20,10 @@ Chrome extension for reducing web page text content using AI while preserving la
 ## Usage
 
 1. Click the Reduct extension icon in your toolbar
-2. Adjust the reduction level (20-80%)
+2. Adjust the reduction level (5-80%)
 3. (Optional) Click "Advanced Options" to customize the prompt
-   - The default prompt is pre-filled and shows {LEVEL} which updates with your slider
+   - The default prompt shows {REDUCT_FACTOR} as a placeholder
+   - This will be replaced with the slider value when you reduce
 4. Click "Reduce Page" to reduce the current page's text
 5. A progress indicator appears on the page with:
    - Live progress bar
@@ -39,34 +40,44 @@ The extension preserves:
 
 - Real-time server status checking
 - On-page progress indicator with integrated cancel button
-- Adjustable reduction level (20-80%)
-- Pre-populated custom prompt with dynamic {LEVEL} placeholder
-- HTML formatting support (bullet lists, numbered lists, paragraphs)
+- Adjustable reduction level (5-80%)
+- Pre-populated custom prompt with {REDUCT_FACTOR} placeholder
+- Rich HTML formatting support
 - One-click restore to original content
 - Preserves page structure and non-text elements
 - Clean down-arrow icon indicating reduction functionality
 
+## HTML Output
+
+The extension uses direct HTML generation for maximum formatting flexibility:
+
+### Supported HTML Elements
+- **Structure**: `<p>`, `<h1>`-`<h6>`, `<blockquote>`, `<hr>`
+- **Lists**: `<ul>`, `<ol>`, `<li>`
+- **Emphasis**: `<strong>`, `<em>`, `<mark>`, `<del>`, `<ins>`
+- **Code**: `<code>`, `<pre>`
+- **Collapsible**: `<details>`, `<summary>`
+
+### Collapsible Details
+
+Less important content can be collapsed using:
+```html
+<details>
+  <summary>Click to expand technical details</summary>
+  <p>Detailed technical information here...</p>
+</details>
+```
+
 ## Custom Prompts
 
-The extension allows you to override the default reduction prompt. Examples:
+When writing custom prompts, you can use {REDUCT_FACTOR} as a placeholder:
 
-- "Summarize the key technical points only"
-- "Extract action items and decisions"  
-- "Focus on the data and statistics"
-- "Remove examples but keep the explanations"
+- "Condense to {REDUCT_FACTOR}% focusing on technical details"
+- "Create a {REDUCT_FACTOR}% summary as an HTML list"
+- "Reduce to {REDUCT_FACTOR}% with <strong> tags for key terms"
+- "Extract the top {REDUCT_FACTOR}% most important points"
 
-## Collapsible Details
-
-The extension supports collapsible sections for less important content. The LLM can use this syntax:
-
-```
-[Details: Summary of hidden content]
-Content that will be hidden by default
-Can span multiple lines
-[/Details]
-```
-
-This renders as an HTML `<details>` element that users can click to expand.
+The {REDUCT_FACTOR} placeholder will be replaced with your slider value (5-80).
 
 ## Requirements
 

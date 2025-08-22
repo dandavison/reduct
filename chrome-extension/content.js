@@ -81,103 +81,58 @@ function groupTextNodes(textNodes) {
   return groups;
 }
 
-function convertToHtml(text) {
-  // Check for details blocks first
-  const detailsPattern = /\[Details:\s*([^\]]+)\]([\s\S]*?)\[\/Details\]/gi;
-  if (detailsPattern.test(text)) {
-    text = text.replace(detailsPattern, (match, summary, content) => {
-      const processedContent = convertToHtml(content.trim());
-      return `<details><summary>${summary.trim()}</summary>${processedContent}</details>`;
-    });
-  }
+function sanitizeHtml(html) {
+  // Create a temporary element to parse the HTML
+  const temp = document.createElement('div');
+  temp.innerHTML = html;
   
-  // Return original text if no formatting detected
-  const hasListMarkers = /^[\*\-•]\s+/m.test(text) || /^\d+\.\s+/m.test(text);
-  const hasLineBreaks = text.includes('\n');
-  const hasDetails = text.includes('<details>');
+  // Define allowed tags
+  const allowedTags = ['p', 'ul', 'ol', 'li', 'details', 'summary', 
+                       'strong', 'em', 'b', 'i', 'br', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+                       'blockquote', 'code', 'pre', 'table', 'thead', 'tbody', 'tr', 'td', 'th',
+                       'mark', 'del', 'ins', 'sub', 'sup', 'hr', 'abbr'];
   
-  if (!hasListMarkers && !hasLineBreaks && !hasDetails) {
-    return text;
-  }
+  // Remove any script tags and event handlers
+  const scripts = temp.querySelectorAll('script');
+  scripts.forEach(script => script.remove());
   
-  // Split text into lines for processing
-  const lines = text.split('\n');
-  const htmlParts = [];
-  let currentList = null;
-  let currentListItems = [];
-  
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i].trim();
-    
-    if (!line) {
-      // Empty line - close current list if any
-      if (currentList) {
-        htmlParts.push(`<${currentList}>${currentListItems.join('')}</${currentList}>`);
-        currentList = null;
-        currentListItems = [];
-      }
-      // Add paragraph break if not at start/end
-      if (i > 0 && i < lines.length - 1) {
-        htmlParts.push('</p><p>');
-      }
-      continue;
-    }
-    
-    // Check for bullet list item
-    const bulletMatch = line.match(/^[\*\-•]\s+(.+)$/);
-    if (bulletMatch) {
-      if (currentList !== 'ul') {
-        if (currentList) {
-          htmlParts.push(`<${currentList}>${currentListItems.join('')}</${currentList}>`);
-          currentListItems = [];
+  // Walk through all elements and remove disallowed ones
+  const walker = document.createTreeWalker(
+    temp,
+    NodeFilter.SHOW_ELEMENT,
+    {
+      acceptNode: function(node) {
+        // Remove any element not in allowed list
+        if (!allowedTags.includes(node.tagName.toLowerCase())) {
+          return NodeFilter.FILTER_REJECT;
         }
-        currentList = 'ul';
-      }
-      currentListItems.push(`<li>${bulletMatch[1]}</li>`);
-      continue;
-    }
-    
-    // Check for numbered list item
-    const numberMatch = line.match(/^\d+\.\s+(.+)$/);
-    if (numberMatch) {
-      if (currentList !== 'ol') {
-        if (currentList) {
-          htmlParts.push(`<${currentList}>${currentListItems.join('')}</${currentList}>`);
-          currentListItems = [];
+        // Remove any attributes (including event handlers)
+        while (node.attributes.length > 0) {
+          node.removeAttribute(node.attributes[0].name);
         }
-        currentList = 'ol';
+        return NodeFilter.FILTER_ACCEPT;
       }
-      currentListItems.push(`<li>${numberMatch[1]}</li>`);
-      continue;
     }
-    
-    // Regular text line
-    if (currentList) {
-      htmlParts.push(`<${currentList}>${currentListItems.join('')}</${currentList}>`);
-      currentList = null;
-      currentListItems = [];
+  );
+  
+  const nodesToRemove = [];
+  while (walker.nextNode()) {
+    const node = walker.currentNode;
+    if (!allowedTags.includes(node.tagName.toLowerCase())) {
+      nodesToRemove.push(node);
     }
-    htmlParts.push(line);
   }
   
-  // Close any remaining list
-  if (currentList) {
-    htmlParts.push(`<${currentList}>${currentListItems.join('')}</${currentList}>`);
-  }
+  // Remove disallowed nodes
+  nodesToRemove.forEach(node => {
+    // Move children up to parent before removing
+    while (node.firstChild) {
+      node.parentNode.insertBefore(node.firstChild, node);
+    }
+    node.remove();
+  });
   
-  // Join and wrap in paragraphs
-  let html = htmlParts.join('\n');
-  
-  // Only wrap in <p> tags if there's actual paragraph content
-  if (html && !html.startsWith('<ul>') && !html.startsWith('<ol>')) {
-    html = '<p>' + html + '</p>';
-  }
-  
-  // Clean up paragraph tags
-  html = html.replace(/<p>\s*<\/p>/g, '');
-  html = html.replace(/<\/p>\s*<p>/g, '</p><p>');
-  
-  return html;
+  return temp.innerHTML;
 }
 
 async function reducePageContent(reductionLevel = 50, customPrompt = null) {
@@ -242,25 +197,21 @@ async function reducePageContent(reductionLevel = 50, customPrompt = null) {
       }
       
       if (response.reducedText) {
-        // Check if the reduced text contains formatting that needs HTML
-        const formattedHtml = convertToHtml(response.reducedText);
+        // Sanitize and insert HTML content
+        const sanitizedHtml = sanitizeHtml(response.reducedText);
         
-        if (formattedHtml !== response.reducedText) {
-          // Insert HTML content
-          const wrapper = document.createElement('div');
-          wrapper.innerHTML = formattedHtml;
-          wrapper.className = 'reduct-formatted';
-          
-          // Replace the container's content with the formatted HTML
-          container.innerHTML = '';
-          container.appendChild(wrapper);
-        } else {
-          // Plain text - use the original approach
-          nodes[0].nodeValue = response.reducedText;
-          for (let i = 1; i < nodes.length; i++) {
-            nodes[i].nodeValue = '';
-          }
-        }
+        // Create wrapper for formatted content
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = sanitizedHtml;
+        wrapper.className = 'reduct-formatted';
+        
+        // Clear original text nodes
+        nodes.forEach(node => {
+          node.nodeValue = '';
+        });
+        
+        // Insert the formatted HTML
+        container.appendChild(wrapper);
       }
       
       // Update progress

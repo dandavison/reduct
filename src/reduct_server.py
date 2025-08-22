@@ -71,18 +71,21 @@ async def reduce_text(request: ReductionRequest):
     try:
         # Use custom prompt if provided, otherwise use default
         if request.prompt:
-            prompt = request.prompt
+            # Replace any remaining {REDUCT_FACTOR} placeholders in custom prompts
+            prompt = request.prompt.replace(
+                "{REDUCT_FACTOR}", str(request.reduction_level)
+            )
         else:
             prompt = (
                 f"Reduce this text to approximately {request.reduction_level}% "
                 f"of its original length. Remove filler, redundancy, and verbose "
                 f"explanations while retaining all meaningful semantic content, "
                 f"key points, and factual information. Maintain the original tone "
-                f"and style. Use markdown formatting when appropriate (e.g., * for "
-                f"bullet points, 1. for numbered lists). For less important details "
-                f"that should be collapsible, use [Details: Summary text]content[/Details]. "
-                f"IMPORTANT: Output ONLY the reduced text without any introduction, "
-                f"explanation, or commentary about the reduction process."
+                f"and style. Output as clean HTML using these tags: <p>, <ul>, <ol>, "
+                f"<li>, <strong>, <em>, <h3>, <blockquote>, <details>, <summary>. "
+                f"Use <details><summary>Title</summary>content</details> for less "
+                f"important information. IMPORTANT: Output ONLY the HTML without any "
+                f"introduction, wrapper tags, or commentary."
             )
 
         # Log the prompt being sent

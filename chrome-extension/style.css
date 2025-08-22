@@ -125,6 +125,102 @@
   margin: 0.5em 0;
 }
 
+.reduct-formatted h1,
+.reduct-formatted h2,
+.reduct-formatted h3,
+.reduct-formatted h4,
+.reduct-formatted h5,
+.reduct-formatted h6 {
+  margin: 1.5em 0 0.5em 0;
+  font-weight: bold;
+}
+
+.reduct-formatted h1:first-child,
+.reduct-formatted h2:first-child,
+.reduct-formatted h3:first-child,
+.reduct-formatted h4:first-child,
+.reduct-formatted h5:first-child,
+.reduct-formatted h6:first-child {
+  margin-top: 0;
+}
+
+.reduct-formatted blockquote {
+  margin: 1em 0;
+  padding: 0.5em 0 0.5em 1em;
+  border-left: 4px solid #e5e7eb;
+  color: #6b7280;
+}
+
+.reduct-formatted code {
+  background-color: #f3f4f6;
+  padding: 0.125em 0.25em;
+  border-radius: 0.25em;
+  font-family: monospace;
+  font-size: 0.875em;
+}
+
+.reduct-formatted pre {
+  background-color: #f3f4f6;
+  padding: 1em;
+  border-radius: 0.375em;
+  overflow-x: auto;
+  margin: 1em 0;
+}
+
+.reduct-formatted pre code {
+  background-color: transparent;
+  padding: 0;
+}
+
+.reduct-formatted strong {
+  font-weight: bold;
+}
+
+.reduct-formatted em {
+  font-style: italic;
+}
+
+.reduct-formatted mark {
+  background-color: yellow;
+  padding: 0.125em 0;
+}
+
+.reduct-formatted del {
+  text-decoration: line-through;
+}
+
+.reduct-formatted ins {
+  text-decoration: underline;
+}
+
+.reduct-formatted hr {
+  margin: 2em 0;
+  border: none;
+  border-top: 1px solid #e5e7eb;
+}
+
+.reduct-formatted table {
+  margin: 1em 0;
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.reduct-formatted th,
+.reduct-formatted td {
+  padding: 0.5em;
+  border: 1px solid #e5e7eb;
+  text-align: left;
+}
+
+.reduct-formatted th {
+  background-color: #f9fafb;
+  font-weight: bold;
+}
+
+.reduct-formatted tr:nth-child(even) {
+  background-color: #f9fafb;
+}
+
 /* Styles for collapsible details */
 .reduct-formatted details {
   margin: 1em 0;

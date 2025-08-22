@@ -11,21 +11,11 @@ const progressBarFill = document.querySelector('.progress-bar-fill');
 const progressBarText = document.querySelector('.progress-bar-text');
 const customPromptTextarea = document.getElementById('customPrompt');
 
-// Update reduction value display and prompt
+// Update reduction value display
 reductionSlider.addEventListener('input', (e) => {
   const level = e.target.value;
   reductionValue.textContent = `${level}%`;
-  
-  // Update {LEVEL} placeholder in prompt if it exists
-  const currentPrompt = customPromptTextarea.value;
-  if (currentPrompt.includes('{LEVEL}')) {
-    customPromptTextarea.value = currentPrompt.replace(/{LEVEL}/g, level);
-  }
 });
-
-// Initialize prompt with current level
-const initialLevel = reductionSlider.value;
-customPromptTextarea.value = customPromptTextarea.value.replace(/{LEVEL}/g, initialLevel);
 
 // Check server status
 checkServerStatus();
@@ -57,10 +47,17 @@ reduceBtn.addEventListener('click', async () => {
   showProgress();
   
   try {
-    const customPrompt = customPromptTextarea.value.trim();
+    let customPrompt = customPromptTextarea.value.trim();
+    const reductionLevel = parseInt(reductionSlider.value);
+    
+    // Replace {REDUCT_FACTOR} with actual value if present
+    if (customPrompt && customPrompt.includes('{REDUCT_FACTOR}')) {
+      customPrompt = customPrompt.replace(/{REDUCT_FACTOR}/g, reductionLevel.toString());
+    }
+    
     const response = await chrome.tabs.sendMessage(tab.id, {
       action: 'reduce',
-      reductionLevel: parseInt(reductionSlider.value),
+      reductionLevel: reductionLevel,
       customPrompt: customPrompt || null
     });
     
