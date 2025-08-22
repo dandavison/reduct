@@ -75,15 +75,6 @@
       cursor: not-allowed;
     }
     
-    #cancelBtn {
-      background-color: #ef4444;
-      color: white;
-    }
-    
-    #cancelBtn:hover {
-      background-color: #dc2626;
-    }
-    
     .status {
       margin-top: 12px;
       padding: 8px;
@@ -168,13 +159,12 @@
       <summary style="cursor: pointer; font-size: 13px; color: #666; margin: 8px 0;">Advanced Options</summary>
       <div style="margin-top: 8px;">
         <label for="customPrompt" style="font-size: 13px; color: #666; display: block; margin-bottom: 4px;">Custom Prompt:</label>
-        <textarea id="customPrompt" rows="4" style="width: 100%; font-size: 12px; padding: 6px; border: 1px solid #d1d5db; border-radius: 4px; resize: vertical;">Reduce this text to approximately {LEVEL}% of its original length. Remove filler, redundancy, and verbose explanations while retaining all meaningful semantic content, key points, and factual information. Maintain the original tone and style. IMPORTANT: Output ONLY the reduced text without any introduction, explanation, or commentary about the reduction process.</textarea>
+        <textarea id="customPrompt" rows="6" style="width: 100%; font-size: 12px; padding: 6px; border: 1px solid #d1d5db; border-radius: 4px; resize: vertical;">Reduce this text to approximately {LEVEL}% of its original length. Remove filler, redundancy, and verbose explanations while retaining all meaningful semantic content, key points, and factual information. Maintain the original tone and style. Use markdown formatting when appropriate (e.g., * for bullet points, 1. for numbered lists). For less important details that should be collapsible, use [Details: Summary text]content[/Details]. IMPORTANT: Output ONLY the reduced text without any introduction, explanation, or commentary about the reduction process.</textarea>
       </div>
     </details>
     
     <button id="reduceBtn">Reduce Page</button>
     <button id="restoreBtn" disabled>Restore Original</button>
-    <button id="cancelBtn" style="display: none;">Cancel</button>
     
     <div id="progressBar" class="progress-bar" style="display: none;">
       <div class="progress-bar-fill"></div>

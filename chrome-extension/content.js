@@ -82,38 +82,100 @@ function groupTextNodes(textNodes) {
 }
 
 function convertToHtml(text) {
+  // Check for details blocks first
+  const detailsPattern = /\[Details:\s*([^\]]+)\]([\s\S]*?)\[\/Details\]/gi;
+  if (detailsPattern.test(text)) {
+    text = text.replace(detailsPattern, (match, summary, content) => {
+      const processedContent = convertToHtml(content.trim());
+      return `<details><summary>${summary.trim()}</summary>${processedContent}</details>`;
+    });
+  }
+  
   // Return original text if no formatting detected
-  if (!text.includes('•') && !text.includes('*') && !text.includes('-') && !text.includes('\n')) {
+  const hasListMarkers = /^[\*\-•]\s+/m.test(text) || /^\d+\.\s+/m.test(text);
+  const hasLineBreaks = text.includes('\n');
+  const hasDetails = text.includes('<details>');
+  
+  if (!hasListMarkers && !hasLineBreaks && !hasDetails) {
     return text;
   }
   
-  let html = text;
+  // Split text into lines for processing
+  const lines = text.split('\n');
+  const htmlParts = [];
+  let currentList = null;
+  let currentListItems = [];
   
-  // Convert bullet lists (various formats)
-  // Handle lists with • bullets
-  html = html.replace(/^([•\*\-])\s+(.+)$/gm, '<li>$2</li>');
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    
+    if (!line) {
+      // Empty line - close current list if any
+      if (currentList) {
+        htmlParts.push(`<${currentList}>${currentListItems.join('')}</${currentList}>`);
+        currentList = null;
+        currentListItems = [];
+      }
+      // Add paragraph break if not at start/end
+      if (i > 0 && i < lines.length - 1) {
+        htmlParts.push('</p><p>');
+      }
+      continue;
+    }
+    
+    // Check for bullet list item
+    const bulletMatch = line.match(/^[\*\-•]\s+(.+)$/);
+    if (bulletMatch) {
+      if (currentList !== 'ul') {
+        if (currentList) {
+          htmlParts.push(`<${currentList}>${currentListItems.join('')}</${currentList}>`);
+          currentListItems = [];
+        }
+        currentList = 'ul';
+      }
+      currentListItems.push(`<li>${bulletMatch[1]}</li>`);
+      continue;
+    }
+    
+    // Check for numbered list item
+    const numberMatch = line.match(/^\d+\.\s+(.+)$/);
+    if (numberMatch) {
+      if (currentList !== 'ol') {
+        if (currentList) {
+          htmlParts.push(`<${currentList}>${currentListItems.join('')}</${currentList}>`);
+          currentListItems = [];
+        }
+        currentList = 'ol';
+      }
+      currentListItems.push(`<li>${numberMatch[1]}</li>`);
+      continue;
+    }
+    
+    // Regular text line
+    if (currentList) {
+      htmlParts.push(`<${currentList}>${currentListItems.join('')}</${currentList}>`);
+      currentList = null;
+      currentListItems = [];
+    }
+    htmlParts.push(line);
+  }
   
-  // Handle numbered lists
-  html = html.replace(/^\d+\.\s+(.+)$/gm, '<li>$1</li>');
+  // Close any remaining list
+  if (currentList) {
+    htmlParts.push(`<${currentList}>${currentListItems.join('')}</${currentList}>`);
+  }
   
-  // Wrap consecutive <li> elements in <ul> or <ol>
-  html = html.replace(/(<li>.*<\/li>\s*)+/g, (match) => {
-    // Check if it's a numbered list
-    const isNumbered = /^\d+\./.test(text);
-    const listTag = isNumbered ? 'ol' : 'ul';
-    return `<${listTag}>${match}</${listTag}>`;
-  });
+  // Join and wrap in paragraphs
+  let html = htmlParts.join('\n');
   
-  // Convert paragraphs (double newlines)
-  html = html.replace(/\n\n+/g, '</p><p>');
-  
-  // Wrap in paragraph tags if needed
-  if (!html.startsWith('<')) {
+  // Only wrap in <p> tags if there's actual paragraph content
+  if (html && !html.startsWith('<ul>') && !html.startsWith('<ol>')) {
     html = '<p>' + html + '</p>';
   }
   
-  // Clean up empty paragraphs
+  // Clean up paragraph tags
   html = html.replace(/<p>\s*<\/p>/g, '');
+  html = html.replace(/<\/p>\s*<p>/g, '</p><p>');
   
   return html;
 }
@@ -250,8 +312,25 @@ function restoreOriginalContent() {
 function showLoadingIndicator() {
   const indicator = document.createElement('div');
   indicator.id = 'reduct-loading';
-  indicator.innerHTML = '<div class="reduct-loading-text">Reducing content...</div><div class="reduct-loading-progress"></div>';
+  indicator.innerHTML = `
+    <div class="reduct-loading-content">
+      <div class="reduct-loading-text">Reducing content...</div>
+      <div class="reduct-loading-progress"></div>
+      <button class="reduct-cancel-btn">Cancel</button>
+    </div>
+  `;
   document.body.appendChild(indicator);
+  
+  // Add cancel button handler
+  const cancelBtn = indicator.querySelector('.reduct-cancel-btn');
+  if (cancelBtn) {
+    cancelBtn.addEventListener('click', () => {
+      isCancelled = true;
+      hideLoadingIndicator();
+      // Restore any partial changes
+      restoreOriginalContent();
+    });
+  }
 }
 
 function hideLoadingIndicator() {

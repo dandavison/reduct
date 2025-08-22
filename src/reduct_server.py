@@ -78,9 +78,18 @@ async def reduce_text(request: ReductionRequest):
                 f"of its original length. Remove filler, redundancy, and verbose "
                 f"explanations while retaining all meaningful semantic content, "
                 f"key points, and factual information. Maintain the original tone "
-                f"and style. IMPORTANT: Output ONLY the reduced text without any "
-                f"introduction, explanation, or commentary about the reduction process."
+                f"and style. Use markdown formatting when appropriate (e.g., * for "
+                f"bullet points, 1. for numbered lists). For less important details "
+                f"that should be collapsible, use [Details: Summary text]content[/Details]. "
+                f"IMPORTANT: Output ONLY the reduced text without any introduction, "
+                f"explanation, or commentary about the reduction process."
             )
+
+        # Log the prompt being sent
+        print("\n[REDUCT SERVER] Sending prompt to LLM:", file=sys.stderr)
+        print(f"{'=' * 60}", file=sys.stderr)
+        print(prompt, file=sys.stderr)
+        print(f"{'=' * 60}\n", file=sys.stderr)
 
         # Call the transform_content function from reduct
         reduced_text = transform_content(request.text, prompt)

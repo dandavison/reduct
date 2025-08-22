@@ -24,7 +24,7 @@ async function handleTextReduction(text, reductionLevel = 50, customPrompt = nul
   try {
     let prompt = customPrompt;
     if (!prompt) {
-      prompt = `Reduce this text to approximately ${reductionLevel}% of its original length. Remove filler, redundancy, and verbose explanations while retaining all meaningful semantic content, key points, and factual information. Maintain the original tone and style. IMPORTANT: Output ONLY the reduced text without any introduction, explanation, or commentary about the reduction process.`;
+      prompt = `Reduce this text to approximately ${reductionLevel}% of its original length. Remove filler, redundancy, and verbose explanations while retaining all meaningful semantic content, key points, and factual information. Maintain the original tone and style. Use markdown formatting when appropriate (e.g., * for bullet points, 1. for numbered lists). For less important details that should be collapsible, use [Details: Summary text]content[/Details]. IMPORTANT: Output ONLY the reduced text without any introduction, explanation, or commentary about the reduction process.`;
     }
     
     const response = await fetch(`${SERVER_URL}/reduce`, {

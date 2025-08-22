@@ -6,17 +6,22 @@
   right: 20px;
   background-color: #3b82f6;
   color: white;
-  padding: 12px 20px;
+  padding: 0;
   border-radius: 8px;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   font-size: 14px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   z-index: 10000;
-  min-width: 200px;
+  min-width: 250px;
+}
+
+.reduct-loading-content {
+  padding: 16px 20px;
 }
 
 .reduct-loading-text {
-  margin-bottom: 8px;
+  margin-bottom: 12px;
+  font-weight: 500;
 }
 
 .reduct-loading-progress {
@@ -24,6 +29,7 @@
   background-color: rgba(255, 255, 255, 0.3);
   border-radius: 2px;
   overflow: hidden;
+  margin-bottom: 16px;
 }
 
 .reduct-loading-progress::after {
@@ -32,6 +38,24 @@
   height: 100%;
   background-color: white;
   animation: progress 1.5s ease-in-out infinite;
+}
+
+.reduct-cancel-btn {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  padding: 6px 16px;
+  border-radius: 4px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+  width: 100%;
+}
+
+.reduct-cancel-btn:hover {
+  background-color: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.5);
 }
 
 @keyframes pulse {
@@ -99,4 +123,36 @@
 
 .reduct-formatted li {
   margin: 0.5em 0;
+}
+
+/* Styles for collapsible details */
+.reduct-formatted details {
+  margin: 1em 0;
+  padding: 0.5em;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  background-color: #f9fafb;
+}
+
+.reduct-formatted details summary {
+  cursor: pointer;
+  font-weight: 500;
+  padding: 0.5em;
+  margin: -0.5em;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.reduct-formatted details summary:hover {
+  background-color: #f3f4f6;
+}
+
+.reduct-formatted details[open] summary {
+  margin-bottom: 0.5em;
+  border-bottom: 1px solid #e5e7eb;
+  border-radius: 4px 4px 0 0;
+}
+
+.reduct-formatted details > *:not(summary) {
+  padding: 0.5em;
 }

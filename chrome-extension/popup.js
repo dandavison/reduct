@@ -10,9 +10,6 @@ const progressBar = document.getElementById('progressBar');
 const progressBarFill = document.querySelector('.progress-bar-fill');
 const progressBarText = document.querySelector('.progress-bar-text');
 const customPromptTextarea = document.getElementById('customPrompt');
-const cancelBtn = document.getElementById('cancelBtn');
-
-let isReducing = false;
 
 // Update reduction value display and prompt
 reductionSlider.addEventListener('input', (e) => {
@@ -55,10 +52,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 reduceBtn.addEventListener('click', async () => {
   const [tab] = await chrome.tabs.query({active: true, currentWindow: true});
   
-  isReducing = true;
   reduceBtn.disabled = true;
-  reduceBtn.style.display = 'none';
-  cancelBtn.style.display = 'block';
   statusDiv.style.display = 'none';
   showProgress();
   
@@ -84,39 +78,6 @@ reduceBtn.addEventListener('click', async () => {
     hideProgress();
     showStatus('Error: Is the page fully loaded?', 'error');
     reduceBtn.disabled = false;
-  } finally {
-    isReducing = false;
-    cancelBtn.style.display = 'none';
-    reduceBtn.style.display = 'block';
-  }
-});
-
-// Cancel button click
-cancelBtn.addEventListener('click', async () => {
-  if (!isReducing) return;
-  
-  const [tab] = await chrome.tabs.query({active: true, currentWindow: true});
-  
-  try {
-    // Send cancel message
-    await chrome.tabs.sendMessage(tab.id, {
-      action: 'cancel'
-    });
-    
-    // Send restore message to revert any partial changes
-    await chrome.tabs.sendMessage(tab.id, {
-      action: 'restore'
-    });
-    
-    hideProgress();
-    showStatus('Reduction cancelled', 'info');
-    reduceBtn.disabled = false;
-  } catch (error) {
-    console.error('Error cancelling:', error);
-  } finally {
-    isReducing = false;
-    cancelBtn.style.display = 'none';
-    reduceBtn.style.display = 'block';
   }
 });
 
