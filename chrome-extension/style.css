@@ -1,0 +1,254 @@
+/* Styles for content script elements */
+
+#reduct-loading {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background-color: #3b82f6;
+  color: white;
+  padding: 0;
+  border-radius: 8px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 14px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 10000;
+  min-width: 250px;
+}
+
+.reduct-loading-content {
+  padding: 16px 20px;
+}
+
+.reduct-loading-text {
+  margin-bottom: 12px;
+  font-weight: 500;
+}
+
+.reduct-loading-progress {
+  height: 4px;
+  background-color: rgba(255, 255, 255, 0.3);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.reduct-loading-progress::after {
+  content: '';
+  display: block;
+  height: 100%;
+  background-color: white;
+  animation: progress 1.5s ease-in-out infinite;
+}
+
+.reduct-cancel-btn {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  padding: 6px 16px;
+  border-radius: 4px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+  width: 100%;
+}
+
+.reduct-cancel-btn:hover {
+  background-color: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.8; }
+}
+
+@keyframes progress {
+  0% { width: 0%; }
+  50% { width: 100%; }
+  100% { width: 0%; }
+}
+
+#reduct-indicator {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background-color: #10b981;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 13px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  z-index: 10000;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+#reduct-indicator:hover {
+  transform: scale(1.05);
+}
+
+/* Add a subtle highlight to reduced content */
+.reduct-reduced {
+  background-color: rgba(59, 130, 246, 0.05);
+  transition: background-color 0.3s;
+}
+
+/* Styles for formatted content */
+.reduct-formatted {
+  /* Inherit font styles from parent */
+  font: inherit;
+  color: inherit;
+  line-height: inherit;
+}
+
+.reduct-formatted p {
+  margin: 1em 0;
+}
+
+.reduct-formatted p:first-child {
+  margin-top: 0;
+}
+
+.reduct-formatted p:last-child {
+  margin-bottom: 0;
+}
+
+.reduct-formatted ul,
+.reduct-formatted ol {
+  margin: 1em 0;
+  padding-left: 2em;
+}
+
+.reduct-formatted li {
+  margin: 0.5em 0;
+}
+
+.reduct-formatted h1,
+.reduct-formatted h2,
+.reduct-formatted h3,
+.reduct-formatted h4,
+.reduct-formatted h5,
+.reduct-formatted h6 {
+  margin: 1.5em 0 0.5em 0;
+  font-weight: bold;
+}
+
+.reduct-formatted h1:first-child,
+.reduct-formatted h2:first-child,
+.reduct-formatted h3:first-child,
+.reduct-formatted h4:first-child,
+.reduct-formatted h5:first-child,
+.reduct-formatted h6:first-child {
+  margin-top: 0;
+}
+
+.reduct-formatted blockquote {
+  margin: 1em 0;
+  padding: 0.5em 0 0.5em 1em;
+  border-left: 4px solid #e5e7eb;
+  color: #6b7280;
+}
+
+.reduct-formatted code {
+  background-color: #f3f4f6;
+  padding: 0.125em 0.25em;
+  border-radius: 0.25em;
+  font-family: monospace;
+  font-size: 0.875em;
+}
+
+.reduct-formatted pre {
+  background-color: #f3f4f6;
+  padding: 1em;
+  border-radius: 0.375em;
+  overflow-x: auto;
+  margin: 1em 0;
+}
+
+.reduct-formatted pre code {
+  background-color: transparent;
+  padding: 0;
+}
+
+.reduct-formatted strong {
+  font-weight: bold;
+}
+
+.reduct-formatted em {
+  font-style: italic;
+}
+
+.reduct-formatted mark {
+  background-color: yellow;
+  padding: 0.125em 0;
+}
+
+.reduct-formatted del {
+  text-decoration: line-through;
+}
+
+.reduct-formatted ins {
+  text-decoration: underline;
+}
+
+.reduct-formatted hr {
+  margin: 2em 0;
+  border: none;
+  border-top: 1px solid #e5e7eb;
+}
+
+.reduct-formatted table {
+  margin: 1em 0;
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.reduct-formatted th,
+.reduct-formatted td {
+  padding: 0.5em;
+  border: 1px solid #e5e7eb;
+  text-align: left;
+}
+
+.reduct-formatted th {
+  background-color: #f9fafb;
+  font-weight: bold;
+}
+
+.reduct-formatted tr:nth-child(even) {
+  background-color: #f9fafb;
+}
+
+/* Styles for collapsible details */
+.reduct-formatted details {
+  margin: 1em 0;
+  padding: 0.5em;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  background-color: #f9fafb;
+}
+
+.reduct-formatted details summary {
+  cursor: pointer;
+  font-weight: 500;
+  padding: 0.5em;
+  margin: -0.5em;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.reduct-formatted details summary:hover {
+  background-color: #f3f4f6;
+}
+
+.reduct-formatted details[open] summary {
+  margin-bottom: 0.5em;
+  border-bottom: 1px solid #e5e7eb;
+  border-radius: 4px 4px 0 0;
+}
+
+.reduct-formatted details > *:not(summary) {
+  padding: 0.5em;
+}
