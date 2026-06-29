@@ -218,7 +218,7 @@ def transcribe_from_url(url: str, verbose: bool = False) -> str:
         console.print("[cyan]🎤 Transcribing audio...[/cyan]")
         result = model.transcribe(audio_file, verbose=False)
 
-        return str(result["text"])
+        return format_transcript(result["segments"])
 
 
 def transcribe_from_file(filepath: str, verbose: bool = False) -> str:
@@ -232,7 +232,35 @@ def transcribe_from_file(filepath: str, verbose: bool = False) -> str:
     console.print(f"[cyan]🎤 Transcribing file: {os.path.basename(filepath)}[/cyan]")
     result = model.transcribe(filepath)
 
-    return str(result["text"])
+    return format_transcript(result["segments"])
+
+
+def format_transcript(
+    segments: list, pause_threshold: float = 2.0, max_chars: int = 700
+) -> str:
+    """Group Whisper segments into paragraphs on speech pauses or sentence breaks."""
+    paragraphs: list[str] = []
+    current: list[str] = []
+    current_len = 0
+    prev_end = 0.0
+    for seg in segments:
+        text = str(seg.get("text", "")).strip()
+        if not text:
+            continue
+        start = float(seg.get("start", prev_end))
+        ends_sentence = current and current[-1].rstrip().endswith((".", "!", "?"))
+        if current and (
+            start - prev_end > pause_threshold
+            or (current_len > max_chars and ends_sentence)
+        ):
+            paragraphs.append(" ".join(current))
+            current, current_len = [], 0
+        current.append(text)
+        current_len += len(text) + 1
+        prev_end = float(seg.get("end", start))
+    if current:
+        paragraphs.append(" ".join(current))
+    return "\n\n".join(paragraphs)
 
 
 def create_source_slug(title: str) -> str:
